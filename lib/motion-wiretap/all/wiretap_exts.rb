@@ -1,4 +1,5 @@
 class NSObject
+  attr_accessor :motion_wiretap_observers
 
   def wiretap(property, &block)
     MotionWiretap::WiretapKvo.new(self, property, &block)

@@ -1,6 +1,6 @@
 module MotionWiretap
 
-  class WiretapView < Wiretap
+  class WiretapView < WiretapKvo
   end
 
 end

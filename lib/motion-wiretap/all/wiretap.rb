@@ -3,8 +3,8 @@ module MotionWiretap
   class Wiretap
 
     def initialize(&block)
-      @initial = nil
-      @initial_is_set = false
+      $motion_wiretaps << self  # signal will be removed when it is completed
+      @is_torn_down = false
 
       @listener_handlers = []
       @completion_handlers = []
@@ -13,55 +13,120 @@ module MotionWiretap
       listen &block if block
     end
 
+    def dealloc
+      teardown
+      super
+    end
+
+    def teardown
+      return if @is_torn_down
+
+      @is_torn_down = true
+      $motion_wiretaps.remove(self)
+    end
+
     ##|
     ##|  Wiretap events
     ##|
 
     # called when the value changes
-    def listen(&block)
-      raise "Block is expected in #{self.class.name}##{__method__}" unless block
-      @listener_handlers << block
+    def listen(wiretap=nil, &block)
+      raise "Block or Wiretap is expected in #{self.class.name}##{__method__}" unless block || wiretap
+      raise "Only Block *or* Wiretap is expected in #{self.class.name}##{__method__}" if block && wiretap
+      @listener_handlers << (block || wiretap)
       self
     end
 
     def trigger_changed(*values)
-      @listener_handlers.each do |block|
-        block.call(*values)
+      return if @is_torn_down
+
+      @listener_handlers.each do |block_or_wiretap|
+        if block_or_wiretap.is_a? Wiretap
+          block_or_wiretap.trigger_changed(*values)
+        else
+          block_or_wiretap.call(*values)
+        end
       end
+
+      return self
     end
 
     # called when no more values are expected
-    def and_then(&block)
-      raise "Block is expected in #{self.class.name}##{__method__}" unless block
+    def and_then(wiretap=nil, &block)
+      raise "Block or Wiretap is expected in #{self.class.name}##{__method__}" unless block || wiretap
+      raise "Only Block *or* Wiretap is expected in #{self.class.name}##{__method__}" if block && wiretap
       @completion_handlers << block
       self
     end
 
     def trigger_completed
+      return if @is_torn_down
+
       @completion_handlers.each do |block|
-        block.call
+        if block_or_wiretap.is_a? Wiretap
+          block_or_wiretap.trigger_completed
+        else
+          block_or_wiretap.call
+        end
       end
+
+      teardown
+      return self
     end
 
     # called when an error occurs, and no more values are expected
-    def on_error(&block)
-      raise "Block is expected in #{self.class.name}##{__method__}" unless block
+    def on_error(wiretap=nil, &block)
+      raise "Block or Wiretap is expected in #{self.class.name}##{__method__}" unless block || wiretap
+      raise "Only Block *or* Wiretap is expected in #{self.class.name}##{__method__}" if block && wiretap
       @error_handlers << block
       self
     end
 
     def trigger_error(error)
+      return if @is_torn_down
+
       @error_handlers.each do |block|
-        block.call(error)
+        if block_or_wiretap.is_a? Wiretap
+          block_or_wiretap.trigger_error(error)
+        else
+          block_or_wiretap.call(error)
+        end
       end
+
+      teardown
+      return self
     end
 
     ##|
     ##|  Wiretap Predicates
     ##|
 
-    # Returns a Wiretap that will only be called if the &condition block returns true
-    def filter(&condition)
+    # Returns a Wiretap that will only be called if the &condition block returns
+    # true
+    def filter(&block)
+      return WiretapFilter.new(self, block)
+    end
+
+    # Returns a Wiretap that combines all the values into one value (the values
+    # are all passed in at the same time)
+    def combine(&block)
+      return WiretapCombiner.new(self, block)
+    end
+
+    # Returns a Wiretap that passes each value through the block, and also the
+    # previous return value (memo).
+    # @example
+    #     wiretap.reduce(0) do |memo, item|
+    #       memo + item.price
+    #     end
+    #     # returns the total of all the prices
+    def reduce(memo=nil, &block)
+      return WiretapReducer.new(self, memo, block)
+    end
+
+    # Returns a Wiretap that passes each value through the provided block
+    def map(&block)
+      return WiretapMapper.new(self, block)
     end
 
   end
@@ -72,9 +137,12 @@ module MotionWiretap
     attr :value
 
     def initialize(target, property, &block)
-      @target = WeakRef.new(target)
+      $motion_wiretaps ||= []
+
+      @target = target
       @property = property
       @value = nil
+      @initial_is_set = false
       super(&block)
 
       @target.addObserver(self,
@@ -84,11 +152,21 @@ module MotionWiretap
         )
     end
 
-    def dealloc
+    def teardown
+      super
       @target.removeObserver(self,
         forKeyPath: @property.to_s
         )
-      super
+      @target = nil
+      @property = nil
+      @value = nil
+    end
+
+    def bind_to(wiretap)
+      wiretap.listen do |value|
+        @target.send("#{@property}=", value)
+      end
+      wiretap.trigger_changed
     end
 
     def observeValueForKeyPath(path, ofObject: target, change: change, context: context)
@@ -96,7 +174,6 @@ module MotionWiretap
       if @initial_is_set
         trigger_changed(@value)
       else
-        @initial = @value
         @initial_is_set = true
       end
     end
@@ -107,63 +184,155 @@ module MotionWiretap
     attr :targets
 
     def initialize(targets, &block)
-      @targets = targets  # this should be an array of Wiretap objects
-      @reducers = []
+      # this can be an array of Wiretap objects (they will be monitored), or
+      # plain objects (they'll just be included in the sequence)
+      @targets = targets
+      # the complete trigger isn't called until all the wiretaps are complete
       @uncompleted = targets.length
 
-      @values = {}
       super(&block)
 
-      @targets.each do |wiretap|
-        @values[wiretap] = wiretap.value
+      # gets assigned to the wiretap value if it's a Wiretap, or the object
+      # itself if it is anything else.
+      @value = []
+      @initial_is_set = true
+      # maps the wiretap object (which is unique)
+      @wiretaps = {}
 
-        wiretap.listen do |value|
-          @values[wiretap] = value
-          trigger_changed(*@values.values)
-        end
-
-        wiretap.on_error do |error|
-          trigger_error(error)
-        end
-
-        wiretap.and_then do |error|
+      @targets.each_with_index do |wiretap,index|
+        unless wiretap.is_a? Wiretap
+          @value << wiretap
+          # not a wiretap, so doesn't need to be "completed"
           @uncompleted -= 1
-          if @uncompleted == 0
-            trigger_completed
+        else
+          raise "You cannot store a Wiretap twice in the same sequence (for now - do you really need this?)" if @wiretaps.key?(wiretap)
+          @wiretaps[wiretap] = index
+
+          @value << wiretap.value
+
+          wiretap.listen do |value|
+            indx = @wiretaps[wiretap]
+            @value[index] = wiretap.value
+            trigger_changed(*@value)
+          end
+
+          wiretap.on_error do |error|
+            trigger_error(error)
+          end
+
+          wiretap.and_then do |error|
+            @uncompleted -= 1
+            if @uncompleted == 0
+              trigger_completed
+            end
           end
         end
       end
     end
 
-    # Returns a Wiretap that combines all the values into one value whenever any
-    # wiretap in `targets` is changed
-    def reduce(&block)
-      retval = WiretapReducer.new(block)
-      @reducers << retval
-
-      return retval
+    def teardown
+      super
+      @targets = nil
+      @wiretaps = nil
     end
 
+  end
+
+  class WiretapFilter < Wiretap
+
+    def initialize(parent, filter)
+      @parent = parent
+      @filter = filter
+
+      @parent.listen(self)
+
+      super()
+    end
+
+    # passes the values through the filter before passing up to the parent
+    # implementation
     def trigger_changed(*values)
-      super.tap do
-        @reducers.each do |reducer|
-          reducer.trigger_changed(*values)
-        end
+      if ( @filter.call(*values) )
+        super(*values)
       end
+    end
+
+    def teardown
+      super
+      @parent = nil
+    end
+
+  end
+
+  class WiretapCombiner < Wiretap
+
+    def initialize(parent, combiner)
+      @parent = parent
+      @combiner = combiner
+
+      @parent.listen(self)
+
+      super()
+    end
+
+    # passes the values through the combiner before passing up to the parent
+    # implementation
+    def trigger_changed(*values)
+      super(@combiner.call(*values))
+    end
+
+    def teardown
+      super
+      @parent = nil
     end
 
   end
 
   class WiretapReducer < Wiretap
 
-    def initialize(reducer)
+    def initialize(parent, memo, reducer)
+      @parent = parent
       @reducer = reducer
+      @memo = memo
+
+      @parent.listen(self)
+
       super()
     end
 
-    # passes the values through the reducer before passing up to the parent implementation
+    # passes each value through the @reducer, passing in the return value of the
+    # previous call (starting with @memo)
     def trigger_changed(*values)
-      super(@reducer.call(*values))
+      super(values.inject(@memo, &@reducer))
+    end
+
+    def teardown
+      super
+      @parent = nil
+    end
+
+  end
+
+  class WiretapMapper < Wiretap
+
+    def initialize(parent, mapper)
+      @parent = parent
+      @mapper = mapper
+
+      @parent.listen(self)
+
+      super()
+    end
+
+    # passes the values through the mapper before passing up to the parent
+    # implementation
+    def trigger_changed(*values)
+      super(*values.map { |value| @mapper.call(value) })
+    end
+
+    def teardown
+      super
+      @parent = nil
     end
 
   end
