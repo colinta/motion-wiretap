@@ -16,4 +16,5 @@ Motion::Project::App.setup do |app|
   # Use `rake config' to see complete project settings.
   app.name = 'motion-wiretap'
   app.specs_dir = "spec/#{app.template}/"
+  app.files.concat(Dir.glob("app-#{app.template}/**/*"))
 end

@@ -1,4 +1,4 @@
-describe "Using with Buttons and Textfields" do
+describe "MotionWiretap with UIButtons and UITextFields" do
 
   before do
     @login_button = UIButton.buttonWithType(UIButtonTypeRoundedRect)

@@ -1,10 +1,16 @@
+$motion_wiretaps = []
+
 module MotionWiretap
 
   class Wiretap
 
     def initialize(&block)
       $motion_wiretaps << self  # signal will be removed when it is completed
+
       @is_torn_down = false
+      @is_completed = false
+      @is_error = false
+      @queue = nil
 
       @listener_handlers = []
       @completion_handlers = []
@@ -25,6 +31,21 @@ module MotionWiretap
       $motion_wiretaps.remove(self)
     end
 
+    # specify the GCD queue that the listeners should be run on
+    def queue(queue)
+      @queue = queue
+      return self
+    end
+
+    # send a block to the GCD queue
+    def enqueue(&block)
+      if @queue
+        @queue.async(&block)
+      else
+        block.call
+      end
+    end
+
     ##|
     ##|  Wiretap events
     ##|
@@ -38,63 +59,90 @@ module MotionWiretap
     end
 
     def trigger_changed(*values)
-      return if @is_torn_down
+      return if @is_torn_down || @is_completed || @is_error
 
       @listener_handlers.each do |block_or_wiretap|
-        if block_or_wiretap.is_a? Wiretap
-          block_or_wiretap.trigger_changed(*values)
-        else
-          block_or_wiretap.call(*values)
-        end
+        trigger_changed_on(block_or_wiretap, values)
       end
 
       return self
+    end
+
+    def trigger_changed_on(block_or_wiretap, values)
+      if block_or_wiretap.is_a? Wiretap
+        block_or_wiretap.trigger_changed(*values)
+      else
+        enqueue do
+          block_or_wiretap.call(*values)
+        end
+      end
     end
 
     # called when no more values are expected
     def and_then(wiretap=nil, &block)
       raise "Block or Wiretap is expected in #{self.class.name}##{__method__}" unless block || wiretap
       raise "Only Block *or* Wiretap is expected in #{self.class.name}##{__method__}" if block && wiretap
-      @completion_handlers << block
+      @completion_handlers << (block || wiretap)
+      if @is_completed
+        trigger_completed_on(block || wiretap)
+      end
       self
     end
 
     def trigger_completed
-      return if @is_torn_down
+      return if @is_torn_down || @is_completed || @is_error
+      @is_completed = true
 
-      @completion_handlers.each do |block|
-        if block_or_wiretap.is_a? Wiretap
-          block_or_wiretap.trigger_completed
-        else
-          block_or_wiretap.call
-        end
+      @completion_handlers.each do |block_or_wiretap|
+        trigger_completed_on(block_or_wiretap)
       end
 
       teardown
       return self
+    end
+
+    def trigger_completed_on(block_or_wiretap)
+      if block_or_wiretap.is_a? Wiretap
+        block_or_wiretap.trigger_completed
+      else
+        enqueue do
+          block_or_wiretap.call
+        end
+      end
     end
 
     # called when an error occurs, and no more values are expected
     def on_error(wiretap=nil, &block)
       raise "Block or Wiretap is expected in #{self.class.name}##{__method__}" unless block || wiretap
       raise "Only Block *or* Wiretap is expected in #{self.class.name}##{__method__}" if block && wiretap
-      @error_handlers << block
+      @error_handlers << (block || wiretap)
+      if @is_error
+        trigger_error_on(block || wiretap, @is_error)
+      end
       self
     end
 
     def trigger_error(error)
-      return if @is_torn_down
+      return if @is_torn_down || @is_completed || @is_error
+      error ||= true
+      @is_error = error
 
-      @error_handlers.each do |block|
-        if block_or_wiretap.is_a? Wiretap
-          block_or_wiretap.trigger_error(error)
-        else
-          block_or_wiretap.call(error)
-        end
+      @error_handlers.each do |block_or_wiretap|
+        trigger_error_on(block_or_wiretap, error)
       end
 
       teardown
       return self
+    end
+
+    def trigger_error_on(block_or_wiretap, error)
+      if block_or_wiretap.is_a? Wiretap
+        block_or_wiretap.trigger_error(error)
+      else
+        enqueue do
+          block_or_wiretap.call(error)
+        end
+      end
     end
 
     ##|
@@ -131,19 +179,30 @@ module MotionWiretap
 
   end
 
-  class WiretapKvo < Wiretap
+  class WiretapTarget < Wiretap
     attr :target
+
+    def initialize(target, &block)
+      @target = target
+      super(&block)
+    end
+
+    def teardown
+      @target = nil
+      super
+    end
+
+  end
+
+  class WiretapKvo < WiretapTarget
     attr :property
     attr :value
 
     def initialize(target, property, &block)
-      $motion_wiretaps ||= []
-
-      @target = target
       @property = property
       @value = nil
       @initial_is_set = false
-      super(&block)
+      super(target, &block)
 
       @target.addObserver(self,
         forKeyPath: property.to_s,
@@ -153,13 +212,16 @@ module MotionWiretap
     end
 
     def teardown
-      super
       @target.removeObserver(self,
         forKeyPath: @property.to_s
         )
-      @target = nil
       @property = nil
       @value = nil
+      super
+    end
+
+    def trigger_changed(*values)
+      super(@value)
     end
 
     def bind_to(wiretap)
@@ -180,17 +242,18 @@ module MotionWiretap
 
   end
 
-  class WiretapArray < Wiretap
+  class WiretapArray < WiretapTarget
     attr :targets
 
     def initialize(targets, &block)
-      # this can be an array of Wiretap objects (they will be monitored), or
-      # plain objects (they'll just be included in the sequence)
-      @targets = targets
+      raise "Not only is listening to an empty array pointless, it will also cause errors" if targets.length == 0
+
       # the complete trigger isn't called until all the wiretaps are complete
       @uncompleted = targets.length
 
-      super(&block)
+      # targets can be an array of Wiretap objects (they will be monitored), or
+      # plain objects (they'll just be included in the sequence)
+      super(targets, &block)
 
       # gets assigned to the wiretap value if it's a Wiretap, or the object
       # itself if it is anything else.
@@ -199,7 +262,7 @@ module MotionWiretap
       # maps the wiretap object (which is unique)
       @wiretaps = {}
 
-      @targets.each_with_index do |wiretap,index|
+      targets.each_with_index do |wiretap,index|
         unless wiretap.is_a? Wiretap
           @value << wiretap
           # not a wiretap, so doesn't need to be "completed"
@@ -232,8 +295,12 @@ module MotionWiretap
 
     def teardown
       super
-      @targets = nil
       @wiretaps = nil
+    end
+
+    def trigger_changed(*values)
+      values = @value if values.length == 0
+      super(*values)
     end
 
   end
@@ -333,6 +400,46 @@ module MotionWiretap
     def teardown
       super
       @parent = nil
+    end
+
+  end
+
+  class WiretapProc < WiretapTarget
+
+    def initialize(target, queue=nil, &block)
+      @started = false
+      super(target, &block)
+      queue(queue) if queue
+    end
+
+    def queue(queue)
+      super
+      start
+    end
+
+    def start
+      unless @started
+        @started = true
+        enqueue do
+          begin
+            trigger_changed(@target.call)
+          rescue Exception => error
+            trigger_error(error)
+          else
+            trigger_completed
+          end
+        end
+      end
+    end
+
+
+    def listen(wiretap=nil, &block)
+      raise "WiretapProc does not support listeners (only the `completed` event is triggered)"
+    end
+
+    def and_then(wiretap=nil, &block)
+      super
+      start
     end
 
   end

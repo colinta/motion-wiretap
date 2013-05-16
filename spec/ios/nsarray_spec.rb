@@ -4,13 +4,13 @@ describe "Motion Wiretap" do
 
     it "should have the `wiretaps` method" do
       -> {
-        [].wiretaps
+        [1].wiretaps
       }.should.not.raise
     end
 
     it "should return a WiretapArray object" do
-      [].wiretaps.should.is_a MotionWiretap::Wiretap
-      [].wiretaps.should.is_a MotionWiretap::WiretapArray
+      [1].wiretaps.should.is_a MotionWiretap::Wiretap
+      [1].wiretaps.should.is_a MotionWiretap::WiretapArray
     end
 
     it "should listen for changes on all objects" do
