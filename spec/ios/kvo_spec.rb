@@ -135,4 +135,13 @@ describe "Motion Wiretap" do
     p1.name.should == p2.name
   end
 
+  it 'should bind two signals with `bind_to` and modify the value with `map`' do
+    p1 = Person.new
+    p2 = Person.new
+    p1.wiretap(:name).bind_to(p2.wiretap(:name).map { |value| value.upcase })
+    p1.name = 'p1 name'
+    p2.name = 'p2 name'
+    p1.name.should == p2.name.upcase
+  end
+
 end

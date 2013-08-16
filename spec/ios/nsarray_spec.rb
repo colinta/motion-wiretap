@@ -24,8 +24,8 @@ describe "Motion Wiretap" do
         @p2_name = p2_name
       end
       p1.name = 'name 1'
-      p2.name = 'name 2'
       @p1_name.should == 'name 1'
+      p2.name = 'name 2'
       @p2_name.should == 'name 2'
     end
 
@@ -98,8 +98,27 @@ describe "Motion Wiretap" do
           @reduced = reduced
         end
         p1.name = 'name 1'
+        @reduced.should == 'name 1'
         p2.name = 'name 2'
         @reduced.should == 'name 1 name 2'
+      end
+
+      it "should reduce Wiretap objects and use a memo" do
+        @times_called = 0
+        p1 = Person.new
+        p2 = Person.new
+        [
+          p1.wiretap(:name),
+          p2.wiretap(:name),
+        ].wiretaps.reduce('names:') do |memo, name|
+          memo + (name ? ' ' + name : '')
+        end.listen do |reduced|
+          @reduced = reduced
+        end
+        p1.name = 'name 1'
+        @reduced.should == 'names: name 1'
+        p2.name = 'name 2'
+        @reduced.should == 'names: name 1 name 2'
       end
 
       it "should reduce Wiretap values even when only one was changed" do

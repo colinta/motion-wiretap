@@ -24,7 +24,7 @@ end
 class Proc
 
   def wiretap(queue=nil, &block)
-    MotionWiretap::WiretapProc(queue, &block)
+    MotionWiretap::WiretapProc.new(self, queue, block)
   end
 
 end

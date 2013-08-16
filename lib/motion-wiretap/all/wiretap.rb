@@ -24,11 +24,17 @@ module MotionWiretap
       super
     end
 
+    # this is the preferred way to turn off a wiretap
+    def cancel!
+      teardown
+    end
+
+    # for internal use
     def teardown
       return if @is_torn_down
 
       @is_torn_down = true
-      $motion_wiretaps.remove(self)
+      $motion_wiretaps.delete(self)
     end
 
     # specify the GCD queue that the listeners should be run on
@@ -406,15 +412,13 @@ module MotionWiretap
 
   class WiretapProc < WiretapTarget
 
-    def initialize(target, queue=nil, &block)
+    def initialize(target, queue, block)
       @started = false
-      super(target, &block)
+      super(target)
+      and_then(&block) if block
       queue(queue) if queue
-    end
 
-    def queue(queue)
-      super
-      start
+      start if block
     end
 
     def start
@@ -422,7 +426,11 @@ module MotionWiretap
         @started = true
         enqueue do
           begin
-            trigger_changed(@target.call)
+            if @target.arity == 0
+              @target.call
+            else
+              @target.call(-> (value) { self.trigger_changed(value) })
+            end
           rescue Exception => error
             trigger_error(error)
           else
@@ -430,16 +438,6 @@ module MotionWiretap
           end
         end
       end
-    end
-
-
-    def listen(wiretap=nil, &block)
-      raise "WiretapProc does not support listeners (only the `completed` event is triggered)"
-    end
-
-    def and_then(wiretap=nil, &block)
-      super
-      start
     end
 
   end
