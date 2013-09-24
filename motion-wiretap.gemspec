@@ -23,7 +23,7 @@ DESC
 
   gem.homepage    = 'https://github.com/colinta/motion-wiretap'
 
-  gem.files        = Dir.glob('lib/motion-wiretap/**/*.rb') + ['README.md', 'motion-wiretap.gemspec']
+  gem.files        = Dir.glob('lib/**/*.rb') + ['README.md', 'motion-wiretap.gemspec']
   gem.test_files   = gem.files.grep(%r{^spec/})
 
   gem.require_paths = ['lib']
