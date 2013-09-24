@@ -1,16 +1,16 @@
 describe "Motion Wiretap" do
 
-  describe "monitoring an array of wiretaps" do
+  describe "monitoring an array of wiretap" do
 
-    it "should have the `wiretaps` method" do
+    it "should have the `wiretap` method" do
       -> {
-        [1].wiretaps
+        [1].wiretap
       }.should.not.raise
     end
 
     it "should return a WiretapArray object" do
-      [1].wiretaps.should.is_a MotionWiretap::Wiretap
-      [1].wiretaps.should.is_a MotionWiretap::WiretapArray
+      [1].wiretap.should.is_a MotionWiretap::Wiretap
+      [1].wiretap.should.is_a MotionWiretap::WiretapArray
     end
 
     it "should listen for changes on all objects" do
@@ -19,7 +19,7 @@ describe "Motion Wiretap" do
       [
         p1.wiretap(:name),
         p2.wiretap(:name),
-      ].wiretaps do |p1_name,p2_name|
+      ].wiretap do |p1_name,p2_name|
         @p1_name = p1_name
         @p2_name = p2_name
       end
@@ -36,7 +36,7 @@ describe "Motion Wiretap" do
       [
         p1.wiretap(:name),
         p2.wiretap(:name),
-      ].wiretaps do |p1_name,p2_name|
+      ].wiretap do |p1_name,p2_name|
         @times_called += 1
       end
       p1.name = 'name 1'
@@ -52,7 +52,7 @@ describe "Motion Wiretap" do
         [
           p1.wiretap(:name),
           p2.wiretap(:name),
-        ].wiretaps.combine do |p1_name, p2_name|
+        ].wiretap.combine do |p1_name, p2_name|
           "#{p1_name} #{p2_name}"
         end.listen do |combined|
           @combined = combined
@@ -70,7 +70,7 @@ describe "Motion Wiretap" do
         [
           p1.wiretap(:name),
           p2.wiretap(:name),
-        ].wiretaps.combine do |p1_name, p2_name|
+        ].wiretap.combine do |p1_name, p2_name|
           "#{p1_name} #{p2_name}"
         end.listen do |combined|
           @combined = combined
@@ -88,7 +88,7 @@ describe "Motion Wiretap" do
         [
           p1.wiretap(:name),
           p2.wiretap(:name),
-        ].wiretaps.reduce do |memo, name|
+        ].wiretap.reduce do |memo, name|
           if memo
             memo + (name ? ' ' : '')
           else
@@ -110,7 +110,7 @@ describe "Motion Wiretap" do
         [
           p1.wiretap(:name),
           p2.wiretap(:name),
-        ].wiretaps.reduce do |memo, name|
+        ].wiretap.reduce do |memo, name|
           if memo
             memo + (name ? ' ' : '')
           else
@@ -128,7 +128,7 @@ describe "Motion Wiretap" do
         [
           'name 1',
           'name 2',
-        ].wiretaps.reduce do |memo, name|
+        ].wiretap.reduce do |memo, name|
           if memo
             memo + (name ? ' ' : '')
           else
@@ -146,7 +146,7 @@ describe "Motion Wiretap" do
         [
           p1.wiretap(:name),
           'name 2',
-        ].wiretaps.reduce do |memo, name|
+        ].wiretap.reduce do |memo, name|
           if memo
             memo + (name ? ' ' : '')
           else

@@ -1,5 +1,4 @@
 class NSObject
-  attr_accessor :motion_wiretap_observers
 
   def wiretap(property, &block)
     MotionWiretap::WiretapKvo.new(self, property, &block)
@@ -10,11 +9,7 @@ end
 
 class NSArray
 
-  def wiretap(property=nil, &block)
-    raise "`wiretap` is not supported on Arrays (arrays are not observable).  You probably meant to use `wiretaps`."
-  end
-
-  def wiretaps(&block)
+  def wiretap(&block)
     MotionWiretap::WiretapArray.new(self, &block)
   end
 
@@ -25,6 +20,15 @@ class Proc
 
   def wiretap(queue=nil, &block)
     MotionWiretap::WiretapProc.new(self, queue, block)
+  end
+
+end
+
+
+class NSString
+
+  def wiretap(object=nil, &block)
+    MotionWiretap::WiretapNotification(self, object, block)
   end
 
 end

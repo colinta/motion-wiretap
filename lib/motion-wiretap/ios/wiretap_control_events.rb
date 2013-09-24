@@ -76,7 +76,7 @@ module MotionWiretap
       when :all
         return UIControlEventAllEvents
       else
-        raise ControlEventNotFound.new
+        raise ControlEventNotFound.new(control_events.to_s)
       end
     end
 

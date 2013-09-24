@@ -5,7 +5,13 @@ An iOS / OS X wrapper heavily inspired by ReactiveCocoa.
 
     gem install motion-wiretap
 
-run the OSX specs using `rake spec platform=osx`
+Run the OSX specs using `rake spec platform=osx`
+
+First things first
+------------------
+
+You **MUST** call `cancel!` on any wiretaps you create, otherwise they will live
+in memory forever.  The upside is that you can create 
 
 Showdown
 --------
@@ -64,7 +70,7 @@ person = Person.new
 [
   person.wiretap(:name),
   person.wiretap(:email),
-].wiretaps.combine do |name, email|
+].wiretap.combine do |name, email|
   puts "#{name} <#{email}>"
 end
 
@@ -79,7 +85,7 @@ person_2 = Person.new
 [
   person_1.wiretap(:name),
   person_2.wiretap(:name),
-].wiretaps.reduce do |memo, name|
+].wiretap.reduce do |memo, name|
   memo ||= []
   memo + [name]
 end
@@ -91,7 +97,7 @@ person_1.name = 'Mr. Blue'
 [
   person_1.wiretap(:name),
   person_2.wiretap(:name),
-].wiretaps.reduce([]) do |memo, name|
+].wiretap.reduce([]) do |memo, name|
   memo + [name]  # you should not change memo in place, the same one will be used on every change event
 end
 ```
@@ -123,7 +129,7 @@ end.start
 # => puts "...0", "...1", "...2", "...3", "...4", "done!"
 ```
 
-### All together now
+### Let's do something practical!
 
 ```ruby
 # bind the `enabled` property to the Wiretap object to a check on whether
@@ -132,8 +138,19 @@ end.start
   [
     @username_field.wiretap(:text),
     @password_field.wiretap(:text),
-  ].wiretaps.combine do |username, password|
+  ].wiretap.combine do |username, password|
     username && username.length > 0 && password && password.length > 0
   end
   )
+```
+
+### Notifications
+
+```ruby
+notification = "NotificationName".wiretap do
+  puts "notification received!"
+end
+
+# rememder: it's *important* to cancel all wiretaps!
+notification.cancel!
 ```

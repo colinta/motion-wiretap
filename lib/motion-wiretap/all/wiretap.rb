@@ -1,11 +1,10 @@
-$motion_wiretaps = []
 
 module MotionWiretap
 
   class Wiretap
 
     def initialize(&block)
-      $motion_wiretaps << self  # signal will be removed when it is completed
+      # MotionWiretap.wiretaps << self  # signal will be removed when it is completed
 
       @is_torn_down = false
       @is_completed = false
@@ -19,22 +18,16 @@ module MotionWiretap
       listen &block if block
     end
 
-    def dealloc
-      teardown
-      super
-    end
-
-    # this is the preferred way to turn off a wiretap
+    # this is the preferred way to turn off a wiretap; child classes override
+    # `teardown`, which is only ever called once.
     def cancel!
+      return if @is_torn_down
+      @is_torn_down = true
       teardown
     end
 
     # for internal use
     def teardown
-      return if @is_torn_down
-
-      @is_torn_down = true
-      $motion_wiretaps.delete(self)
     end
 
     # specify the GCD queue that the listeners should be run on
@@ -103,7 +96,7 @@ module MotionWiretap
         trigger_completed_on(block_or_wiretap)
       end
 
-      teardown
+      cancel!
       return self
     end
 
@@ -137,7 +130,7 @@ module MotionWiretap
         trigger_error_on(block_or_wiretap, error)
       end
 
-      teardown
+      cancel!
       return self
     end
 
@@ -248,18 +241,18 @@ module MotionWiretap
 
   end
 
-  class WiretapArray < WiretapTarget
+  class WiretapArray < Wiretap
     attr :targets
 
     def initialize(targets, &block)
       raise "Not only is listening to an empty array pointless, it will also cause errors" if targets.length == 0
 
-      # the complete trigger isn't called until all the wiretaps are complete
+      # the complete trigger isn't called until all the wiretap are complete
       @uncompleted = targets.length
 
       # targets can be an array of Wiretap objects (they will be monitored), or
       # plain objects (they'll just be included in the sequence)
-      super(targets, &block)
+      super(&block)
 
       # gets assigned to the wiretap value if it's a Wiretap, or the object
       # itself if it is anything else.
@@ -299,9 +292,16 @@ module MotionWiretap
       end
     end
 
-    def teardown
+    def cancel!
+      @wiretaps.each do |wiretap,index|
+        wiretap.cancel!
+      end
       super
+    end
+
+    def teardown
       @wiretaps = nil
+      super
     end
 
     def trigger_changed(*values)
@@ -331,8 +331,8 @@ module MotionWiretap
     end
 
     def teardown
-      super
       @parent = nil
+      super
     end
 
   end
@@ -355,8 +355,8 @@ module MotionWiretap
     end
 
     def teardown
-      super
       @parent = nil
+      super
     end
 
   end
@@ -380,8 +380,8 @@ module MotionWiretap
     end
 
     def teardown
-      super
       @parent = nil
+      super
     end
 
   end
@@ -404,8 +404,8 @@ module MotionWiretap
     end
 
     def teardown
-      super
       @parent = nil
+      super
     end
 
   end
@@ -440,6 +440,33 @@ module MotionWiretap
       end
     end
 
+  end
+
+  class WiretapNotification < Wiretap
+
+    def initialize(notification, object, block)
+      @notification = notification
+      @object = object
+
+      NSNotificationCenter.defaultCenter.addObserver(self, selector: 'notify:', name:@notification, object:@object)
+      listen(&block) if block
+    end
+
+    def notify(notification)
+      trigger_changed(notification.object, notification.userInfo)
+    end
+
+    def teardown
+      NSNotificationCenter.defaultCenter.removeObserver(self, name:@notification, object:@object)
+      super
+    end
+
+  end
+
+  module_function
+
+  def wiretaps
+    @wiretaps ||= []
   end
 
 end

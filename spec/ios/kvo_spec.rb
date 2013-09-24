@@ -9,8 +9,12 @@ describe "Motion Wiretap" do
     end
 
     it "should return a WiretapKvo object" do
-      Person.new.wiretap(:name).should.is_a MotionWiretap::Wiretap
-      Person.new.wiretap(:name).should.is_a MotionWiretap::WiretapKvo
+      wiretap = Person.new.wiretap(:name)
+
+      wiretap.should.is_a MotionWiretap::Wiretap
+      wiretap.should.is_a MotionWiretap::WiretapKvo
+
+      wiretap.cancel!
     end
 
     it "should call a block when a change happens" do
@@ -18,11 +22,12 @@ describe "Motion Wiretap" do
       original_name = 'name 1'
       new_name = 'name 2'
       person.name = original_name
-      person.wiretap(:name) do |new_name|
+      wiretap = person.wiretap(:name) do |new_name|
         @new_name = new_name
       end
       person.name = new_name
       @new_name.should == new_name
+      wiretap.cancel!
     end
 
     it "should call a block only after a change" do
@@ -31,7 +36,7 @@ describe "Motion Wiretap" do
       new_name = 'name 2'
       person.name = original_name
       @times_called = 0
-      person.wiretap(:name) do |new_name|
+      wiretap = person.wiretap(:name) do |new_name|
         @times_called += 1
       end
       person.name = new_name
@@ -43,7 +48,7 @@ describe "Motion Wiretap" do
       original_name = 'name 1'
       new_name = 'name 2'
       person.name = original_name
-      person.wiretap(:name).listen do |new_name|
+      wiretap = person.wiretap(:name).listen do |new_name|
         @new_name = new_name
       end
       person.name = new_name
@@ -55,7 +60,7 @@ describe "Motion Wiretap" do
       original_name = 'name 1'
       new_name = 'name 2'
       person.name = original_name
-      person.wiretap(:name).listen do |new_name|
+      wiretap = person.wiretap(:name).listen do |new_name|
         @new_name1 = new_name
       end.listen do |new_name|
         @new_name2 = new_name
@@ -72,7 +77,7 @@ describe "Motion Wiretap" do
       bad_name = 'ignore this'
       person.name = original_name
       @names = []
-      person.wiretap(:name).filter do |new_name|
+      wiretap = person.wiretap(:name).filter do |new_name|
         new_name != bad_name
       end.listen do |new_name|
         @names << new_name
@@ -87,7 +92,7 @@ describe "Motion Wiretap" do
       original_name = 'name 1'
       new_name = 'name 2'
       person.name = original_name
-      person.wiretap(:name).combine do |new_name|
+      wiretap = person.wiretap(:name).combine do |new_name|
         new_name.upcase
       end.listen do |new_name|
         @new_name = new_name
@@ -101,7 +106,7 @@ describe "Motion Wiretap" do
       original_name = 'name 1'
       new_name = 'name 2'
       person.name = original_name
-      person.wiretap(:name).map do |new_name|
+      wiretap = person.wiretap(:name).map do |new_name|
         new_name.upcase
       end.listen do |new_name|
         @new_name = new_name
@@ -115,7 +120,7 @@ describe "Motion Wiretap" do
       original_name = 'name 1'
       new_name = 'name 2'
       person.name = original_name
-      person.wiretap(:name).reduce do |memo, new_name|
+      wiretap = person.wiretap(:name).reduce do |memo, new_name|
         new_name.upcase
       end.listen do |new_name|
         @new_name = new_name
@@ -129,7 +134,8 @@ describe "Motion Wiretap" do
   it 'should bind two signals with `bind_to`' do
     p1 = Person.new
     p2 = Person.new
-    p1.wiretap(:name).bind_to(p2.wiretap(:name))
+    wiretap_2 = p2.wiretap(:name)
+    wiretap_1 = p1.wiretap(:name).bind_to(wiretap_2)
     p1.name = 'p1 name'
     p2.name = 'p2 name'
     p1.name.should == p2.name

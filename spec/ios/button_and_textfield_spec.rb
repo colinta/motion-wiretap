@@ -10,7 +10,7 @@ describe "MotionWiretap with UIButtons and UITextFields" do
       [
         @username_field.wiretap(:text),
         @password_field.wiretap(:text),
-      ].wiretaps.combine do |username, password|
+      ].wiretap.combine do |username, password|
         username && username.length > 0 && password && password.length > 0
       end
       )
