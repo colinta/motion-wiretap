@@ -67,14 +67,15 @@ non-polluting version.
   NSAttributedString.alloc.initWithString(text, attributes: { NSForegroundColorAttributeName => UIColor.blueColor })
 end)
 
-# bind the `enabled` property to check on whether `username_field.text` and
-# `password_field.text` are blank
+# This code will set the 'enabled' property depending on whether the username
+# and password are not empty.
 @login_button.wiretap(:enabled).bind_to(
   [
     @username_field.wiretap(:text),
     @password_field.wiretap(:text),
   ].wiretap.combine do |username, password|
-    username && username.length > 0 && password && password.length > 0
+    # use motion-support to get the 'present?' method
+    username.present? && password.present?
   end
   )
 ```
@@ -82,11 +83,11 @@ end)
 ### Types of wiretaps
 
 - Key-Value Observation / KVO
-- Arrays (map/reduce)
+- Arrays (map/reduce/combine)
 - Jobs (event stream, completion)
-- NSNotificationCenter
 - UIView Gestures
 - UIControl events
+- NSNotificationCenter (needs specs)
 
 ### Key-Value Observation
 
@@ -94,7 +95,6 @@ end)
 class Person
   attr_accessor :name
   attr_accessor :email
-  attr_accessor :address
 end
 
 # listen for changes
@@ -129,7 +129,7 @@ person_1.name
 # => "BOB"
 
 # bind the property of one object to the value of another, but change it using `map`
-wiretap = Motion.wiretap(person_1, :name).bind_to(person_2.wiretap(:name).map { |value| value.upcase })
+wiretap = Motion.wiretap(person_1, :name).bind_to(Motion.wiretap(person_2, :name).map { |value| value.upcase })
 person_2.name = 'Bob'
 person_1.name # => "BOB"
 ```
