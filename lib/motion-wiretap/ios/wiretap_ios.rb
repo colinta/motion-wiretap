@@ -4,10 +4,6 @@ module MotionWiretap
 
   class WiretapView < WiretapTarget
 
-    def dummy
-      UIButton.new.enabled = true
-    end
-
     def on(recognizer, options=nil, &block)
       if recognizer
         case recognizer

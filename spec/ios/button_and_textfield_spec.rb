@@ -7,7 +7,10 @@ describe "MotionWiretap with UIButtons and UITextFields" do
     @password_field = UITextField.new
 
     @label_wiretap = Motion.wiretap(@label, :text).bind_to(Motion.wiretap(@username_field, :text))
-    # @login_button.enabled = false
+
+    # i don't want to set the value of @login_button.enabled, but we need to
+    # have the method compiled.
+    UIButton.new.enabled = true
 
     bound = Motion.wiretap([
         Motion.wiretap(@username_field, :text),
