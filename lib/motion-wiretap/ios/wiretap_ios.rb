@@ -2,7 +2,11 @@ module MotionWiretap
   class GestureNotFound < Exception
   end
 
-  class WiretapView < Wiretap
+  class WiretapView < WiretapTarget
+
+    def dummy
+      UIButton.new.enabled = true
+    end
 
     def on(recognizer, options=nil, &block)
       if recognizer
@@ -26,12 +30,12 @@ module MotionWiretap
         self.target.addGestureRecognizer(recognizer)
       end
 
-      super(&block)
+      listen(&block)
 
       return self
     end
 
-    def handle_gesture(recognizer)
+    def handle_gesture
       trigger_changed
     end
 
@@ -46,7 +50,7 @@ module MotionWiretap
     def on(control_event, options={}, &block)
       begin
         control_event = ControlEvents.convert(control_event)
-        self.target.addTarget(self, action:'handle_event:', forControlEvents:control_event)
+        self.target.addTarget(self, action: :handle_event, forControlEvents: control_event)
       rescue ControlEventNotFound
         super(control_event, options, &block)
       else
@@ -56,7 +60,7 @@ module MotionWiretap
       return self
     end
 
-    def handle_event(event)
+    def handle_event
       trigger_changed
     end
 

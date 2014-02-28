@@ -3,7 +3,7 @@ require File.expand_path('../lib/motion-wiretap/version.rb', __FILE__)
 
 Gem::Specification.new do |gem|
   gem.name          = 'motion-wiretap'
-  gem.version       = MotionWiretap::Version
+  gem.version       = MotionWiretap::VERSION
   gem.licenses      = ['BSD']
 
   gem.authors = ['Colin T.A. Gray']

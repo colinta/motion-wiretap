@@ -1,25 +1,25 @@
-describe "Motion Wiretap" do
+describe MotionWiretap::WiretapArray do
 
-  describe "monitoring an array of wiretap" do
+  describe "monitoring an array of wiretaps" do
 
     it "should have the `wiretap` method" do
       -> {
-        [1].wiretap
+        Motion.wiretap([1])
       }.should.not.raise
     end
 
     it "should return a WiretapArray object" do
-      [1].wiretap.should.is_a MotionWiretap::Wiretap
-      [1].wiretap.should.is_a MotionWiretap::WiretapArray
+      Motion.wiretap([1]).should.is_a MotionWiretap::Wiretap
+      Motion.wiretap([1]).should.is_a MotionWiretap::WiretapArray
     end
 
     it "should listen for changes on all objects" do
       p1 = Person.new
       p2 = Person.new
-      [
-        p1.wiretap(:name),
-        p2.wiretap(:name),
-      ].wiretap do |p1_name,p2_name|
+      Motion.wiretap([
+        Motion.wiretap(p1, :name),
+        Motion.wiretap(p2, :name),
+      ]) do |p1_name,p2_name|
         @p1_name = p1_name
         @p2_name = p2_name
       end
@@ -33,10 +33,10 @@ describe "Motion Wiretap" do
       @times_called = 0
       p1 = Person.new
       p2 = Person.new
-      [
-        p1.wiretap(:name),
-        p2.wiretap(:name),
-      ].wiretap do |p1_name,p2_name|
+      Motion.wiretap([
+        Motion.wiretap(p1, :name),
+        Motion.wiretap(p2, :name),
+      ]) do |p1_name,p2_name|
         @times_called += 1
       end
       p1.name = 'name 1'
@@ -48,33 +48,37 @@ describe "Motion Wiretap" do
 
       it "should call immediately with one wiretap" do
         @complete = false
-        tap = MotionWiretap::Wiretap.new
-        [
+        tap = MotionWiretap::Signal.new
+        Motion.wiretap([
           tap
-        ].wiretap.and_then do
+        ]).and_then do
           @complete = true
         end
 
         @complete.should == false
-        tap.trigger_completed
+        tap.next(nil)
+        @complete.should == false
+        tap.complete
         @complete.should == true
       end
 
       it "should call after two wiretaps" do
         @complete = false
-        tap_1 = MotionWiretap::Wiretap.new
-        tap_2 = MotionWiretap::Wiretap.new
-        [
+        tap_1 = MotionWiretap::Signal.new
+        tap_2 = MotionWiretap::Signal.new
+        Motion.wiretap([
           tap_1,
           tap_2,
-        ].wiretap.and_then do
+        ]).and_then do
           @complete = true
         end
 
         @complete.should == false
-        tap_1.trigger_completed
+        tap_1.complete
         @complete.should == false
-        tap_2.trigger_completed
+        tap_2.next(nil)
+        @complete.should == false
+        tap_2.complete
         @complete.should == true
       end
 
@@ -85,10 +89,10 @@ describe "Motion Wiretap" do
         @times_called = 0
         p1 = Person.new
         p2 = Person.new
-        [
-          p1.wiretap(:name),
-          p2.wiretap(:name),
-        ].wiretap.combine do |p1_name, p2_name|
+        Motion.wiretap([
+          Motion.wiretap(p1, :name),
+          Motion.wiretap(p2, :name),
+        ]).combine do |p1_name, p2_name|
           "#{p1_name} #{p2_name}"
         end.listen do |combined|
           @combined = combined
@@ -103,10 +107,10 @@ describe "Motion Wiretap" do
         p1 = Person.new
         p2 = Person.new
         p2.name = 'name 2'
-        [
-          p1.wiretap(:name),
-          p2.wiretap(:name),
-        ].wiretap.combine do |p1_name, p2_name|
+        Motion.wiretap([
+          Motion.wiretap(p1, :name),
+          Motion.wiretap(p2, :name),
+        ]).combine do |p1_name, p2_name|
           "#{p1_name} #{p2_name}"
         end.listen do |combined|
           @combined = combined
@@ -121,10 +125,10 @@ describe "Motion Wiretap" do
         @times_called = 0
         p1 = Person.new
         p2 = Person.new
-        [
-          p1.wiretap(:name),
-          p2.wiretap(:name),
-        ].wiretap.reduce do |memo, name|
+        Motion.wiretap([
+          Motion.wiretap(p1, :name),
+          Motion.wiretap(p2, :name),
+        ]).reduce do |memo, name|
           if memo
             memo + (name ? ' ' : '')
           else
@@ -143,10 +147,10 @@ describe "Motion Wiretap" do
         @times_called = 0
         p1 = Person.new
         p2 = Person.new
-        [
-          p1.wiretap(:name),
-          p2.wiretap(:name),
-        ].wiretap.reduce('names:') do |memo, name|
+        Motion.wiretap([
+          Motion.wiretap(p1, :name),
+          Motion.wiretap(p2, :name),
+        ]).reduce('names:') do |memo, name|
           memo + (name ? ' ' + name : '')
         end.listen do |reduced|
           @reduced = reduced
@@ -162,10 +166,10 @@ describe "Motion Wiretap" do
         p1 = Person.new
         p2 = Person.new
         p2.name = 'name 2'
-        [
-          p1.wiretap(:name),
-          p2.wiretap(:name),
-        ].wiretap.reduce do |memo, name|
+        Motion.wiretap([
+          Motion.wiretap(p1, :name),
+          Motion.wiretap(p2, :name),
+        ]).reduce do |memo, name|
           if memo
             memo + (name ? ' ' : '')
           else
@@ -180,10 +184,10 @@ describe "Motion Wiretap" do
 
       it "should reduce all non-Wiretap objects" do
         @times_called = 0
-        [
+        Motion.wiretap([
           'name 1',
           'name 2',
-        ].wiretap.reduce do |memo, name|
+        ]).reduce do |memo, name|
           if memo
             memo + (name ? ' ' : '')
           else
@@ -198,10 +202,10 @@ describe "Motion Wiretap" do
       it "should reduce a mix of Wiretap and non-Wiretap objects" do
         @times_called = 0
         p1 = Person.new
-        [
-          p1.wiretap(:name),
+        Motion.wiretap([
+          Motion.wiretap(p1, :name),
           'name 2',
-        ].wiretap.reduce do |memo, name|
+        ]).reduce do |memo, name|
           if memo
             memo + (name ? ' ' : '')
           else
@@ -220,10 +224,10 @@ describe "Motion Wiretap" do
         @times_called = 0
         p1 = Person.new
         p2 = Person.new
-        [
-          p1.wiretap(:name),
-          p2.wiretap(:name),
-        ].wiretap.map do |name|
+        Motion.wiretap([
+          Motion.wiretap(p1, :name),
+          Motion.wiretap(p2, :name),
+        ]).map do |name|
           name && name.upcase
         end.listen do |p1_name, p2_name|
           @mapped = "#{p1_name} #{p2_name}"
@@ -238,10 +242,10 @@ describe "Motion Wiretap" do
         p1 = Person.new
         p2 = Person.new
         p2.name = 'name 2'
-        [
-          p1.wiretap(:name),
-          p2.wiretap(:name),
-        ].wiretap.map do |name|
+        Motion.wiretap([
+          Motion.wiretap(p1, :name),
+          Motion.wiretap(p2, :name),
+        ]).map do |name|
           name && name.upcase
         end.listen do |p1_name, p2_name|
           @mapped = "#{p1_name} #{p2_name}"
@@ -252,10 +256,10 @@ describe "Motion Wiretap" do
 
       it "should map all non-Wiretap objects" do
         @times_called = 0
-        [
+        Motion.wiretap([
           'name 1',
           'name 2',
-        ].wiretap.map do |name|
+        ]).map do |name|
           name && name.upcase
         end.listen do |p1_name, p2_name|
           @mapped = "#{p1_name} #{p2_name}"
@@ -266,10 +270,10 @@ describe "Motion Wiretap" do
       it "should map a mix of Wiretap and non-Wiretap objects" do
         @times_called = 0
         p1 = Person.new
-        [
-          p1.wiretap(:name),
+        Motion.wiretap([
+          Motion.wiretap(p1, :name),
           'name 2',
-        ].wiretap.map do |name|
+        ]).map do |name|
           name && name.upcase
         end.listen do |p1_name, p2_name|
           @mapped = "#{p1_name} #{p2_name}"

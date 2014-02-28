@@ -28,7 +28,7 @@ end
 class NSString
 
   def wiretap(object=nil, &block)
-    MotionWiretap::WiretapNotification(self, object, block)
+    MotionWiretap::WiretapNotification.new(self, object, block)
   end
 
 end

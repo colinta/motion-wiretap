@@ -1,23 +1,42 @@
-describe "MotionWiretap with UIView gestures" do
+describe MotionWiretap::WiretapView do
   tests GestureController
 
   before do
-    controller.gesture_button.wiretap.on(:tap) do
+    @wiretap_1 = Motion.wiretap(controller.gesture_button).on(:tap) do
       @gesture_touched = true
     end
-    controller.control_event_button.wiretap.on(:touch) do
+
+    @wiretap_2 = Motion.wiretap(controller.control_event_button).on(:touch) do
       @control_event_touched = true
     end
   end
 
+  it 'should be a MotionWiretap::WiretapView' do
+    @wiretap_1.should.be.kind_of(MotionWiretap::WiretapView)
+  end
+
+  it 'should be a MotionWiretap::WiretapControl' do
+    @wiretap_2.should.be.kind_of(MotionWiretap::WiretapControl)
+  end
+
   it 'should respond to tap' do
-    tap 'gesture_button'
-    @gesture_touched.should == true
+    print "\nyou have 5 seconds to tap 'gesture_button'"
+    tap controller.gesture_button
+    wait 5 do
+      @gesture_touched.should == true
+      @wiretap_1.cancel!
+      @wiretap_2.cancel!
+    end
   end
 
   it 'should respond to touch' do
-    tap 'control_event_button'
-    @control_event_touched.should == true
+    print "\nyou have 1 second to tap 'control_event_button'"
+    tap controller.control_event_button
+    wait 1 do
+      @control_event_touched.should == true
+      @wiretap_1.cancel!
+      @wiretap_2.cancel!
+    end
   end
 
 end

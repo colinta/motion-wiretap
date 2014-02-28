@@ -1,11 +1,8 @@
-
 module MotionWiretap
 
   class Wiretap
 
     def initialize(&block)
-      # MotionWiretap.wiretaps << self  # signal will be removed when it is completed
-
       @is_torn_down = false
       @is_completed = false
       @is_error = false
@@ -18,6 +15,11 @@ module MotionWiretap
       listen &block if block
     end
 
+    def dealloc
+      self.cancel!
+      super
+    end
+
     # this is the preferred way to turn off a wiretap; child classes override
     # `teardown`, which is only ever called once.
     def cancel!
@@ -26,7 +28,8 @@ module MotionWiretap
       teardown
     end
 
-    # for internal use
+    # Overridden by subclasses to turn off observation, unregister
+    # notifications, etc.
     def teardown
     end
 
@@ -53,7 +56,7 @@ module MotionWiretap
     def listen(wiretap=nil, &block)
       raise "Block or Wiretap is expected in #{self.class.name}##{__method__}" unless block || wiretap
       raise "Only Block *or* Wiretap is expected in #{self.class.name}##{__method__}" if block && wiretap
-      @listener_handlers << (block || wiretap)
+      @listener_handlers << (block ? block.weak! : wiretap)
       self
     end
 
@@ -81,11 +84,11 @@ module MotionWiretap
     def and_then(wiretap=nil, &block)
       raise "Block or Wiretap is expected in #{self.class.name}##{__method__}" unless block || wiretap
       raise "Only Block *or* Wiretap is expected in #{self.class.name}##{__method__}" if block && wiretap
-      @completion_handlers << (block || wiretap)
+      @completion_handlers << (block ? block.weak! : wiretap)
       if @is_completed
         trigger_completed_on(block || wiretap)
       end
-      self
+      return self
     end
 
     def trigger_completed
@@ -114,11 +117,11 @@ module MotionWiretap
     def on_error(wiretap=nil, &block)
       raise "Block or Wiretap is expected in #{self.class.name}##{__method__}" unless block || wiretap
       raise "Only Block *or* Wiretap is expected in #{self.class.name}##{__method__}" if block && wiretap
-      @error_handlers << (block || wiretap)
+      @error_handlers << (block ? block.weak! : wiretap)
       if @is_error
         trigger_error_on(block || wiretap, @is_error)
       end
-      self
+      return self
     end
 
     def trigger_error(error)
@@ -156,6 +159,10 @@ module MotionWiretap
 
     # Returns a Wiretap that combines all the values into one value (the values
     # are all passed in at the same time)
+    # @example
+    #     wiretap.combine do |one, two|
+    #       one ? two : nil
+    #     end
     def combine(&block)
       return WiretapCombiner.new(self, block)
     end
@@ -163,15 +170,19 @@ module MotionWiretap
     # Returns a Wiretap that passes each value through the block, and also the
     # previous return value (memo).
     # @example
+    #     # returns the total of all the prices
     #     wiretap.reduce(0) do |memo, item|
     #       memo + item.price
     #     end
-    #     # returns the total of all the prices
     def reduce(memo=nil, &block)
       return WiretapReducer.new(self, memo, block)
     end
 
     # Returns a Wiretap that passes each value through the provided block
+    # @example
+    #     wiretap.map do |item|
+    #       item.to_s
+    #     end
     def map(&block)
       return WiretapMapper.new(self, block)
     end
@@ -186,11 +197,6 @@ module MotionWiretap
       super(&block)
     end
 
-    def teardown
-      @target = nil
-      super
-    end
-
   end
 
   class WiretapKvo < WiretapTarget
@@ -201,6 +207,7 @@ module MotionWiretap
       @property = property
       @value = nil
       @initial_is_set = false
+      @bound_to = []
       super(target, &block)
 
       @target.addObserver(self,
@@ -214,8 +221,7 @@ module MotionWiretap
       @target.removeObserver(self,
         forKeyPath: @property.to_s
         )
-      @property = nil
-      @value = nil
+      @bound_to.each &:cancel!
       super
     end
 
@@ -224,10 +230,13 @@ module MotionWiretap
     end
 
     def bind_to(wiretap)
+      @bound_to << wiretap
       wiretap.listen do |value|
-        @target.send("#{@property}=", value)
+        @target.send("#{@property}=".to_sym, value)
       end
       wiretap.trigger_changed
+
+      return self
     end
 
     def observeValueForKeyPath(path, ofObject: target, change: change, context: context)
@@ -256,26 +265,26 @@ module MotionWiretap
 
       # gets assigned to the wiretap value if it's a Wiretap, or the object
       # itself if it is anything else.
-      @value = []
+      @values = []
       @initial_is_set = true
       # maps the wiretap object (which is unique)
       @wiretaps = {}
 
-      targets.each_with_index do |wiretap,index|
+      targets.each_with_index do |wiretap, index|
         unless wiretap.is_a? Wiretap
-          @value << wiretap
+          @values << wiretap
           # not a wiretap, so doesn't need to be "completed"
           @uncompleted -= 1
         else
           raise "You cannot store a Wiretap twice in the same sequence (for now - do you really need this?)" if @wiretaps.key?(wiretap)
           @wiretaps[wiretap] = index
 
-          @value << wiretap.value
+          @values << wiretap.value
 
           wiretap.listen do |value|
             indx = @wiretaps[wiretap]
-            @value[index] = wiretap.value
-            trigger_changed(*@value)
+            @values[index] = wiretap.value
+            trigger_changed(*@values)
           end
 
           wiretap.on_error do |error|
@@ -292,34 +301,39 @@ module MotionWiretap
       end
     end
 
-    def cancel!
-      @wiretaps.each do |wiretap,index|
-        wiretap.cancel!
-      end
-      super
-    end
-
     def teardown
-      @wiretaps = nil
+      cancel = (->(wiretap){ wiretap.cancel! }).weak!
+      @wiretaps.keys.each &cancel
       super
     end
 
     def trigger_changed(*values)
-      values = @value if values.length == 0
+      values = @values if values.length == 0
       super(*values)
     end
 
   end
 
-  class WiretapFilter < Wiretap
+  class WiretapChild < Wiretap
+
+    def initialize(parent)
+      @parent = parent
+      @parent.listen(self)
+      super()
+    end
+
+    def teardown
+      @parent.cancel!
+      super
+    end
+
+  end
+
+  class WiretapFilter < WiretapChild
 
     def initialize(parent, filter)
-      @parent = parent
       @filter = filter
-
-      @parent.listen(self)
-
-      super()
+      super(parent)
     end
 
     # passes the values through the filter before passing up to the parent
@@ -330,22 +344,14 @@ module MotionWiretap
       end
     end
 
-    def teardown
-      @parent = nil
-      super
-    end
-
   end
 
-  class WiretapCombiner < Wiretap
+  class WiretapCombiner < WiretapChild
 
     def initialize(parent, combiner)
-      @parent = parent
       @combiner = combiner
 
-      @parent.listen(self)
-
-      super()
+      super(parent)
     end
 
     # passes the values through the combiner before passing up to the parent
@@ -354,23 +360,15 @@ module MotionWiretap
       super(@combiner.call(*values))
     end
 
-    def teardown
-      @parent = nil
-      super
-    end
-
   end
 
-  class WiretapReducer < Wiretap
+  class WiretapReducer < WiretapChild
 
     def initialize(parent, memo, reducer)
-      @parent = parent
       @reducer = reducer
       @memo = memo
 
-      @parent.listen(self)
-
-      super()
+      super(parent)
     end
 
     # passes each value through the @reducer, passing in the return value of the
@@ -379,22 +377,14 @@ module MotionWiretap
       super(values.inject(@memo, &@reducer))
     end
 
-    def teardown
-      @parent = nil
-      super
-    end
-
   end
 
-  class WiretapMapper < Wiretap
+  class WiretapMapper < WiretapChild
 
     def initialize(parent, mapper)
-      @parent = parent
       @mapper = mapper
 
-      @parent.listen(self)
-
-      super()
+      super(parent)
     end
 
     # passes the values through the mapper before passing up to the parent
@@ -403,22 +393,17 @@ module MotionWiretap
       super(*values.map { |value| @mapper.call(value) })
     end
 
-    def teardown
-      @parent = nil
-      super
-    end
-
   end
 
   class WiretapProc < WiretapTarget
 
-    def initialize(target, queue, block)
+    def initialize(target, queue, and_then)
       @started = false
       super(target)
-      and_then(&block) if block
+      and_then(&and_then) if and_then
       queue(queue) if queue
 
-      start if block
+      start if and_then
     end
 
     def start
@@ -448,7 +433,7 @@ module MotionWiretap
       @notification = notification
       @object = object
 
-      NSNotificationCenter.defaultCenter.addObserver(self, selector: 'notify:', name:@notification, object:@object)
+      NSNotificationCenter.defaultCenter.addObserver(self, selector: 'notify:', name: @notification, object: @object)
       listen(&block) if block
     end
 
@@ -457,16 +442,10 @@ module MotionWiretap
     end
 
     def teardown
-      NSNotificationCenter.defaultCenter.removeObserver(self, name:@notification, object:@object)
+      NSNotificationCenter.defaultCenter.removeObserver(self, name: @notification, object: @object)
       super
     end
 
-  end
-
-  module_function
-
-  def wiretaps
-    @wiretaps ||= []
   end
 
 end
