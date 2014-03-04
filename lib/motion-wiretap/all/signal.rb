@@ -6,10 +6,9 @@ module MotionWiretap
   class Signal < Wiretap
     attr :value
 
-    def initialize(value=nil)
-      super()
+    def initialize(value=nil, &block)
       @value = value
-      trigger_changed(@value)
+      super(&block)
     end
 
     def next(value)
@@ -23,6 +22,13 @@ module MotionWiretap
 
     def error(error)
       trigger_error(error)
+    end
+
+    # The Signal class always sends an initial value
+    def listen(wiretap=nil, &block)
+      super
+      trigger_changed(@value)
+      return self
     end
 
   end

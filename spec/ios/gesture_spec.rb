@@ -20,22 +20,38 @@ describe MotionWiretap::WiretapView do
   end
 
   it 'should respond to tap' do
-    print "\nyou have 5 seconds to tap 'gesture_button'"
     tap controller.gesture_button
-    wait 5 do
+    test = -> do
       @gesture_touched.should == true
       @wiretap_1.cancel!
       @wiretap_2.cancel!
     end
+    if @gesture_touched
+      test.call
+    else
+      print "\nyou have 5 seconds to tap 'gesture_button'"
+      wait 2 do
+        if @gesture_touched
+          test.call
+        else
+          wait 3, &test
+        end
+      end
+    end
   end
 
   it 'should respond to touch' do
-    print "\nyou have 1 second to tap 'control_event_button'"
     tap controller.control_event_button
-    wait 1 do
+    test = -> do
       @control_event_touched.should == true
       @wiretap_1.cancel!
       @wiretap_2.cancel!
+    end
+    if @control_event_touched
+      test.call
+    else
+      print "\nyou have 1 second to tap 'control_event_button'"
+      wait 1, &test
     end
   end
 

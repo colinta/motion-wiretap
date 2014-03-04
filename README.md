@@ -32,10 +32,12 @@ Open these side by side to see the comparison:
 Usage
 -----
 
-Creating a wiretap is done using the factory method `Motion.wiretap()`.
+Creating a wiretap is done using the factory method `Motion.wiretap()`, also
+aliased as `MW()`.
 
 ```ruby
-@wiretap = Motion.wiretap(obj, :property)
+@wiretap = Motion.wiretap(obj, :property)  # this object will notify listeners everytime obj.property changes
+@wiretap = MW(obj, :property)
 ```
 
 If you want to use a more literate style, you can include the
@@ -52,28 +54,27 @@ notifications or control events.
 
 ### Let's start with something practical!
 
-This first example will use `motion-wiretap-polluting` methods, because that's
-my preferred aesthetic style, but the rest of this document will focus on the
-non-polluting version.
+In these examples I will use all three ways of creating a Wiretap
+(`MW(), Motion.wiretap(), object.wiretap`).
 
 ```ruby
 # assign the label to the text view; changes to the text view will be reflected
 # on the label.
-@label.wiretap(:text).bind_to(@text_view.wiretap(:text))
+MW(@label, :text).bind_to(MW(@text_view, :text))
 
 # assign the attributedText of the label to the text view, doing some
-# highlighting in-between
+# highlighting in-between.
 @label.wiretap(:attributedText).bind_to(@text_view.wiretap(:text).map do |text|
   NSAttributedString.alloc.initWithString(text, attributes: { NSForegroundColorAttributeName => UIColor.blueColor })
 end)
 
 # This code will set the 'enabled' property depending on whether the username
 # and password are not empty.
-@login_button.wiretap(:enabled).bind_to(
-  [
-    @username_field.wiretap(:text),
-    @password_field.wiretap(:text),
-  ].wiretap.combine do |username, password|
+Motion.wiretap(@login_button, :enabled).bind_to(
+  Motion.wiretap([
+    Motion.wiretap(@username_field, :text),
+    Motion.wiretap(@password_field, :text),
+  ]).combine do |username, password|
     # use motion-support to get the 'present?' method
     username.present? && password.present?
   end

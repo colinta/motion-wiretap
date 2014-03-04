@@ -1,3 +1,7 @@
+def MW(*args, &block)
+  Motion.wiretap(*args, &block)
+end
+
 module MotionWiretap
 
   class Wiretap

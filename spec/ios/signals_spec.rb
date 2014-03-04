@@ -14,19 +14,19 @@ describe MotionWiretap::Signal do
     end
   end
 
-  it 'should start empty' do
-    @values.should == []
+  it 'should start with initial' do
+    @values.should == [:initial]
   end
 
   it 'should send a value on next()' do
     @signal.next(:next)
-    @values.should == [:next]
+    @values.should == [:initial, :next]
   end
 
   it 'should send multiple values on next()' do
     @signal.next(:a)
     @signal.next(:b)
-    @values.should == [:a, :b]
+    @values.should == [:initial, :a, :b]
   end
 
   it 'should complete' do
