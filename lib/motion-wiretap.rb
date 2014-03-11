@@ -12,4 +12,8 @@ Motion::Project::App.setup do |app|
   app.files.insert(insert_point, File.join(File.dirname(__FILE__), "motion-wiretap/version.rb"))
   app.files.insert(insert_point, *Dir.glob(File.join(File.dirname(__FILE__), "motion-wiretap/#{app.template.to_s}/*.rb")))
   app.files.insert(insert_point, *Dir.glob(File.join(File.dirname(__FILE__), "motion-wiretap/all/*.rb")))
+
+  wiretap = File.join(File.dirname(__FILE__), "motion-wiretap/all/wiretap.rb")
+  signal = File.join(File.dirname(__FILE__), "motion-wiretap/all/signal.rb")
+  app.files_dependencies signal => [wiretap]
 end
