@@ -61,4 +61,13 @@ describe MotionWiretap::Signal do
     @value.should == :after
   end
 
+  it 'should support not let you assign the SINGLETON value' do
+    signal = MotionWiretap::Signal.new
+    signal.value.should == nil
+    lambda do
+      signal.next(MotionWiretap::Signal::SINGLETON)
+    end.should.raise
+    signal.value.should == nil
+  end
+
 end
