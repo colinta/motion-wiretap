@@ -14,6 +14,15 @@ describe MotionWiretap::Signal do
     end
   end
 
+  it 'should have a value' do
+    @signal.value.should == :initial
+  end
+
+  it 'should update its value' do
+    @signal.next(:next)
+    @signal.value.should == :next
+  end
+
   it 'should start with initial' do
     @values.should == [:initial]
   end
@@ -38,6 +47,18 @@ describe MotionWiretap::Signal do
   it 'should error' do
     @signal.error(:error)
     @error.should == :error
+  end
+
+  it 'should support Signals with no initial value' do
+    signal = MotionWiretap::Signal.new
+    signal.value.should == nil
+    @value = :before
+    signal.listen do |value|
+      @value = value
+    end
+    @value.should == :before
+    signal.next(:after)
+    @value.should == :after
   end
 
 end

@@ -4,14 +4,25 @@ module MotionWiretap
   # Signal is triggered with a new value, or it is completed, or canceled with
   # an error event.
   class Signal < Wiretap
-    attr :value
+    # This is the default initial value - it does not trigger a 'change' event.
+    # This value is for internal use only.
+    SINGLETON = Class.new.new
 
-    def initialize(value=nil, &block)
+    def initialize(value=SINGLETON, &block)
       @value = value
       super(&block)
     end
 
+    def value
+      if @value == SINGLETON
+        nil
+      else
+        @value
+      end
+    end
+
     def next(value)
+      raise "don't do that please" if value == SINGLETON
       @value = value
       trigger_changed(@value)
     end
@@ -27,7 +38,9 @@ module MotionWiretap
     # The Signal class always sends an initial value
     def listen(wiretap=nil, &block)
       super
-      trigger_changed(@value)
+      unless @value == SINGLETON
+        trigger_changed(@value)
+      end
       return self
     end
 
