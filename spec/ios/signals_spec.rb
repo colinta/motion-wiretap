@@ -49,6 +49,11 @@ describe MotionWiretap::Signal do
     @error.should == :error
   end
 
+  it 'should error with no value' do
+    @signal.error
+    @error.should == true
+  end
+
   it 'should support Signals with no initial value' do
     signal = MotionWiretap::Signal.new
     signal.value.should == nil

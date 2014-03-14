@@ -4,6 +4,10 @@ end
 
 module MotionWiretap
 
+  # This placeholder value is used anywhere you want to accept any value,
+  # including nil.
+  SINGLETON = Class.new.new
+
   class Wiretap
 
     def initialize(&block)
@@ -128,9 +132,12 @@ module MotionWiretap
       return self
     end
 
-    def trigger_error(error)
+    def trigger_error(error=SINGLETON)
       return if @is_torn_down || @is_completed || @is_error
-      error ||= true
+      raise "You must pass a truthy value to `trigger_error()`" unless error
+
+      # convert SINGLETON to a default error value
+      error = true if error == SINGLETON
       @is_error = error
 
       @error_handlers.each do |block_or_wiretap|

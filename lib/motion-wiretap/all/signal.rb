@@ -4,10 +4,9 @@ module MotionWiretap
   # Signal is triggered with a new value, or it is completed, or canceled with
   # an error event.
   class Signal < Wiretap
-    # This is the default initial value - it does not trigger a 'change' event.
-    # This value is for internal use only.
-    SINGLETON = Class.new.new
 
+    # The SINGLETON value does not trigger a 'change' event. It is for internal
+    # use only.
     def initialize(value=SINGLETON, &block)
       @value = value
       super(&block)
@@ -31,7 +30,7 @@ module MotionWiretap
       trigger_completed
     end
 
-    def error(error)
+    def error(error=SINGLETON)
       trigger_error(error)
     end
 
