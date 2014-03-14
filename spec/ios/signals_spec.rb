@@ -70,9 +70,36 @@ describe MotionWiretap::Signal do
     signal = MotionWiretap::Signal.new
     signal.value.should == nil
     lambda do
-      signal.next(MotionWiretap::Signal::SINGLETON)
+      signal.next(MotionWiretap::SINGLETON)
     end.should.raise
     signal.value.should == nil
+  end
+
+  it 'should support multiple values in next()' do
+    signal = MotionWiretap::Signal.new
+    signal.listen do |a, b|
+      @a = a
+      @b = b
+    end
+    signal.next(:a, :b)
+    @a.should == :a
+    @b.should == :b
+    signal.next(:a)
+    @a.should == :a
+    @b.should == nil
+  end
+
+  it 'should have documented behavior when passing multiple values' do
+    signal = MotionWiretap::Signal.new
+    signal.listen do |a|
+      @a = a
+    end
+    signal.next(:a, :b)
+    @a.should == :a
+    signal.next([:a, :b])
+    @a.should == [:a, :b]
+    signal.next(:a)
+    @a.should == :a
   end
 
 end
