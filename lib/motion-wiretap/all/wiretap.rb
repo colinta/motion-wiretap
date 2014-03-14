@@ -78,6 +78,7 @@ module MotionWiretap
       return self
     end
 
+    # Sends the block or wiretap a changed signal
     def trigger_changed_on(block_or_wiretap, values)
       if block_or_wiretap.is_a? Wiretap
         block_or_wiretap.trigger_changed(*values)
@@ -111,6 +112,7 @@ module MotionWiretap
       return self
     end
 
+    # Sends the block or wiretap a completed signal
     def trigger_completed_on(block_or_wiretap)
       if block_or_wiretap.is_a? Wiretap
         block_or_wiretap.trigger_completed
@@ -148,6 +150,7 @@ module MotionWiretap
       return self
     end
 
+    # Sends the block or wiretap an error value
     def trigger_error_on(block_or_wiretap, error)
       if block_or_wiretap.is_a? Wiretap
         block_or_wiretap.trigger_error(error)
