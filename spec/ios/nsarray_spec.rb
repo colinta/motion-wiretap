@@ -86,7 +86,6 @@ describe MotionWiretap::WiretapArray do
 
     describe "should combine the values" do
       it "should combine Wiretap values" do
-        @times_called = 0
         p1 = Person.new
         p2 = Person.new
         Motion.wiretap([
@@ -103,7 +102,6 @@ describe MotionWiretap::WiretapArray do
       end
 
       it "should combine Wiretap values even when only one was changed" do
-        @times_called = 0
         p1 = Person.new
         p2 = Person.new
         p2.name = 'name 2'
@@ -122,7 +120,6 @@ describe MotionWiretap::WiretapArray do
 
     describe "should reduce the values" do
       it "should reduce Wiretap objects" do
-        @times_called = 0
         p1 = Person.new
         p2 = Person.new
         Motion.wiretap([
@@ -144,7 +141,6 @@ describe MotionWiretap::WiretapArray do
       end
 
       it "should reduce Wiretap objects and use a memo" do
-        @times_called = 0
         p1 = Person.new
         p2 = Person.new
         Motion.wiretap([
@@ -162,7 +158,6 @@ describe MotionWiretap::WiretapArray do
       end
 
       it "should reduce Wiretap values even when only one was changed" do
-        @times_called = 0
         p1 = Person.new
         p2 = Person.new
         p2.name = 'name 2'
@@ -183,7 +178,6 @@ describe MotionWiretap::WiretapArray do
       end
 
       it "should reduce all non-Wiretap objects" do
-        @times_called = 0
         Motion.wiretap([
           'name 1',
           'name 2',
@@ -200,7 +194,6 @@ describe MotionWiretap::WiretapArray do
       end
 
       it "should reduce a mix of Wiretap and non-Wiretap objects" do
-        @times_called = 0
         p1 = Person.new
         Motion.wiretap([
           Motion.wiretap(p1, :name),
@@ -221,7 +214,6 @@ describe MotionWiretap::WiretapArray do
 
     describe "should map the values" do
       it "should map Wiretap objects" do
-        @times_called = 0
         p1 = Person.new
         p2 = Person.new
         Motion.wiretap([
@@ -238,7 +230,6 @@ describe MotionWiretap::WiretapArray do
       end
 
       it "should map Wiretap values even when only one was changed" do
-        @times_called = 0
         p1 = Person.new
         p2 = Person.new
         p2.name = 'name 2'
@@ -255,7 +246,6 @@ describe MotionWiretap::WiretapArray do
       end
 
       it "should map all non-Wiretap objects" do
-        @times_called = 0
         Motion.wiretap([
           'name 1',
           'name 2',
@@ -268,7 +258,6 @@ describe MotionWiretap::WiretapArray do
       end
 
       it "should map a mix of Wiretap and non-Wiretap objects" do
-        @times_called = 0
         p1 = Person.new
         Motion.wiretap([
           Motion.wiretap(p1, :name),

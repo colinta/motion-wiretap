@@ -8,8 +8,8 @@ module MotionWiretap
     # The SINGLETON value does not trigger a 'change' event. It is for internal
     # use only.
     def initialize(value=SINGLETON, &block)
-      @value = value
       super(&block)
+      @value = value
     end
 
     def value

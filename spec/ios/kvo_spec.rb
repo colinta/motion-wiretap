@@ -157,7 +157,7 @@ describe MotionWiretap::WiretapKvo do
   it 'should bind two signals with `bind_to` and modify the value with `map`' do
     p1 = Person.new
     p2 = Person.new
-    wiretap = Motion.wiretap(p1, :name).bind_to(Motion.wiretap(p2, :name).map { |value| value.upcase })
+    wiretap = Motion.wiretap(p1, :name).bind_to(Motion.wiretap(p2, :name).map { |value| value && value.upcase })
     p1.name = 'p1 name'
     p2.name = 'p2 name'
     p1.name.should == p2.name.upcase

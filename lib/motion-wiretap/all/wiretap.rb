@@ -9,12 +9,15 @@ module MotionWiretap
   SINGLETON = Class.new.new
 
   class Wiretap
+    # wiretaps have an intrinsic "current value"
+    attr :value
 
     def initialize(&block)
       @is_torn_down = false
       @is_completed = false
       @is_error = false
       @queue = nil
+      @value = nil
 
       @listener_handlers = []
       @completion_handlers = []
@@ -70,6 +73,11 @@ module MotionWiretap
 
     def trigger_changed(*values)
       return if @is_torn_down || @is_completed || @is_error
+      if values.length == 1
+        @value = values.first
+      else
+        @value = values
+      end
 
       @listener_handlers.each do |block_or_wiretap|
         trigger_changed_on(block_or_wiretap, values)
@@ -215,11 +223,9 @@ module MotionWiretap
 
   class WiretapKvo < WiretapTarget
     attr :property
-    attr :value
 
     def initialize(target, property, &block)
       @property = property
-      @value = nil
       @initial_is_set = false
       @bound_to = []
       super(target, &block)
@@ -239,25 +245,22 @@ module MotionWiretap
       super
     end
 
-    def trigger_changed(*values)
-      super(@value)
-    end
-
     def bind_to(wiretap)
       @bound_to << wiretap
       wiretap.listen do |value|
         @target.send("#{@property}=".to_sym, value)
       end
-      wiretap.trigger_changed
+      wiretap.trigger_changed(wiretap.value)
 
       return self
     end
 
     def observeValueForKeyPath(path, ofObject: target, change: change, context: context)
-      @value = change[NSKeyValueChangeNewKey]
+      value = change[NSKeyValueChangeNewKey]
       if @initial_is_set
-        trigger_changed(@value)
+        trigger_changed(value)
       else
+        @value = value
         @initial_is_set = true
       end
     end
@@ -333,6 +336,7 @@ module MotionWiretap
     def initialize(parent)
       @parent = parent
       @parent.listen(self)
+      @value = @parent.value
       super()
     end
 
@@ -353,7 +357,7 @@ module MotionWiretap
     # passes the values through the filter before passing up to the parent
     # implementation
     def trigger_changed(*values)
-      if ( @filter.call(*values) )
+      if @filter.call(*values)
         super(*values)
       end
     end
@@ -364,7 +368,6 @@ module MotionWiretap
 
     def initialize(parent, combiner)
       @combiner = combiner
-
       super(parent)
     end
 
@@ -381,7 +384,6 @@ module MotionWiretap
     def initialize(parent, memo, reducer)
       @reducer = reducer
       @memo = memo
-
       super(parent)
     end
 
@@ -397,7 +399,6 @@ module MotionWiretap
 
     def initialize(parent, mapper)
       @mapper = mapper
-
       super(parent)
     end
 
