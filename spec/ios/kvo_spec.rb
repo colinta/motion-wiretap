@@ -77,7 +77,8 @@ describe MotionWiretap::WiretapKvo do
     it "should not call listener when a filter returns false" do
       person = Person.new
       original_name = 'name 1'
-      ok_name = 'name 2'
+      ok_name_1 = 'name 2'
+      ok_name_2 = 'name 3'
       bad_name = 'ignore this'
       person.name = original_name
       @names = []
@@ -86,9 +87,11 @@ describe MotionWiretap::WiretapKvo do
       end.listen do |new_name|
         @names << new_name
       end
-      person.name = ok_name
+      person.name = ok_name_1
       person.name = bad_name
-      @names.should == [ok_name]
+      person.name = ok_name_2
+      person.name = bad_name
+      @names.should == [ok_name_1, ok_name_2]
       wiretap.cancel!
     end
 
