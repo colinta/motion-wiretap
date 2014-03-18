@@ -33,17 +33,9 @@ module MotionWiretap
     #     signal.next(1, 5)    # works great, @added will be 6
     #     signal.next([1, 5])  # this works, too, because of how args are assigned to blocks in ruby
     #     signal.next(1)  # a will be 1 and b will be nil (error!)
-    def next(value, *values)
-      if values.length > 0
-        raise "don't do that please" if values.include? SINGLETON
-        value = [value].concat values
-        @value = value
-        trigger_changed(*value)
-      else
-        raise "don't do that please" if value == SINGLETON
-        @value = value
-        trigger_changed(@value)
-      end
+    def next(*values)
+      raise "don't do that please" if values.include? SINGLETON
+      trigger_changed(*values)
     end
 
     def complete
