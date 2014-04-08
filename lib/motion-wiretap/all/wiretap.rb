@@ -445,11 +445,11 @@ module MotionWiretap
   class WiretapNotification < Wiretap
 
     def initialize(notification, object, block)
+      super(&block)
       @notification = notification
       @object = object
 
       NSNotificationCenter.defaultCenter.addObserver(self, selector: 'notify:', name: @notification, object: @object)
-      listen(&block) if block
     end
 
     def notify(notification)

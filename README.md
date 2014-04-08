@@ -88,7 +88,7 @@ Motion.wiretap(@login_button, :enabled).bind_to(
 - Jobs (event stream, completion)
 - UIView Gestures
 - UIControl events
-- NSNotificationCenter (needs specs)
+- NSNotificationCenter
 
 ### Key-Value Observation
 
