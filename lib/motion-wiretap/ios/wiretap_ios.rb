@@ -53,6 +53,11 @@ module MotionWiretap
 
   class WiretapControl < WiretapView
 
+    def initialize(target, &block)
+      super
+      @control_events = []
+    end
+
     # control_event can be any UIControlEventConstant, or any symbol found in
     # wiretap_control_events.rb, or an array of UIControlEventConstants or
     # symbols.  Since UIView implements `on` to accept a gesture, this method
@@ -61,6 +66,7 @@ module MotionWiretap
       begin
         control_event = ControlEvents.convert(control_event)
         self.target.addTarget(self, action: 'handle_event:', forControlEvents: control_event)
+        @control_events << control_event
       rescue ControlEventNotFound
         super(control_event, options, &block)
       else
@@ -72,6 +78,14 @@ module MotionWiretap
 
     def handle_event(event)
       trigger_changed(event)
+    end
+
+    def teardown
+      remove_event = (-> (event) {
+        self.target.removeTarget(self, action: 'handle_event:', forControlEvents: event)
+      }).weak!
+      @control_events.each(&remove_event)
+      super
     end
 
   end

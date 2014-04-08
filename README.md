@@ -181,26 +181,42 @@ person_2.name = 'Mr. Blue'
 
 ### Monitoring jobs
 
+There is a "short form" and "long form" to these wiretaps.  The "short form" is
+something like `Motion.wiretap(proc) do (block) end`.  The `proc` will be
+executed, and when it's done, the `block` will execute.
+
+The "long form" is different only in that the block is passed to the `and_then`
+method, not the initializer: `Motion.wiretap(proc).and_then do ... end`.  In
+this form, you must call `start` on the wiretap:
+
 ```ruby
-# Monitor for background job completion:
-Motion.wiretap(-> do
+# Monitor for background job completion, short form:
+@wiretap = Motion.wiretap(-> do
+  this_will_take_forever!
+end) do
+  puts "done!"
+end
+
+# Monitor for background job completion, long form:
+@wiretap = Motion.wiretap(-> do
   this_will_take_forever!
 end).and_then do
   puts "done!"
-end.start
+end.start  # you must call 'start' explicitly
 
-# Same, but specifying the thread to run on. The completion block will be called
-# on this thread, too. The queue conveniently accepts a completion handler
-# (delegates to the `Wiretap#and_then` method).
-Motion.wiretap(-> do
+# Same again, but specifying the thread to run on. The completion block will be
+# called on this thread, too. The queue conveniently accepts a completion
+# handler (delegates to the `Wiretap#and_then` method).
+@wiretap = Motion.wiretap(-> do
   this_will_take_forever!
 end).queue(Dispatch::Queue.concurrent).and_then do
   puts "done!"
-end.start
+end
+@wiretap.start
 
 # Send a stream of values from a block. A lambda is passed in that will forward
 # change events to the `listen` block
-Motion.wiretap(-> (on_change) do
+@wiretap = Motion.wiretap(-> (on_change) do
   5.times do |count|
     on_change.call count
     sleep(1)
@@ -243,8 +259,8 @@ Possible events:
     :end, :touch_down_repeat, :touch_drag_inside, :touch_drag_outside,
     :touch_drag_enter, :touch_drag_exit, :touch_up_inside, :touch_up_outside,
     :touch_cancel, :value_changed, :editing_did_begin, :editing_changed,
-    :editing_did_change, :editing_did_end, :editing_did_end_on_exit, :all_touch,
-    :all_editing, :application, :system, :all
+    :editing_did_change, :editing_did_end, :editing_did_end_on_exit
+    :all_touch, :all_editing, :application, :system, :all
 
 ```ruby
 @wiretap = Motion.wiretap(control).on(:touch) do |event|
@@ -254,8 +270,9 @@ end
 ### Notifications
 
 ```ruby
-@wiretap = Motion.wiretap('NotificationName') do
+@wiretap = Motion.wiretap('NotificationName') do |object, user_info|
   puts 'notification received!'
 end
-# the notification observer will be removed when the Wiretap is dealloc'd
+
+NSNotificationCenter.defaultCenter.postNotificationName('NotificationName', object: nil, userInfo: info)
 ```
