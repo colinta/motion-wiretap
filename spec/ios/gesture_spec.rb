@@ -2,11 +2,11 @@ describe MotionWiretap::WiretapView do
   tests GestureController
 
   before do
-    @wiretap_1 = Motion.wiretap(controller.gesture_button).on(:tap) do
+    @wiretap_1 = Motion.wiretap(controller.gesture_button).on(:tap) do |gesture|
       @gesture_touched = true
     end
 
-    @wiretap_2 = Motion.wiretap(controller.control_event_button).on(:touch) do
+    @wiretap_2 = Motion.wiretap(controller.control_event_button).on(:touch) do |event|
       @control_event_touched = true
     end
   end

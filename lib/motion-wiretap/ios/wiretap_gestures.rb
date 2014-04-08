@@ -23,7 +23,7 @@ module MotionWiretap
         end
       end
 
-      recognizer = UITapGestureRecognizer.alloc.initWithTarget(target, action: :handle_gesture)
+      recognizer = UITapGestureRecognizer.alloc.initWithTarget(target, action: 'handle_gesture:')
       recognizer.numberOfTapsRequired = taps if taps
       recognizer.numberOfTouchesRequired = fingers if fingers
       return recognizer
@@ -31,13 +31,13 @@ module MotionWiretap
 
     # @yield [recognizer] Handles the gesture event, and passes the recognizer instance to the block.
     def pinch(target)
-      recognizer = UIPinchGestureRecognizer.alloc.initWithTarget(target, action: :handle_gesture)
+      recognizer = UIPinchGestureRecognizer.alloc.initWithTarget(target, action: 'handle_gesture:')
       return recognizer
     end
 
     # @yield [recognizer] Handles the gesture event, and passes the recognizer instance to the block.
     def rotate(target)
-      recognizer = UIRotationGestureRecognizer.alloc.initWithTarget(target, action: :handle_gesture)
+      recognizer = UIRotationGestureRecognizer.alloc.initWithTarget(target, action: 'handle_gesture:')
       return recognizer
     end
 
@@ -71,7 +71,7 @@ module MotionWiretap
         direction = UISwipeGestureRecognizerDirectionDown
       end
 
-      recognizer = UISwipeGestureRecognizer.alloc.initWithTarget(target, action: :handle_gesture)
+      recognizer = UISwipeGestureRecognizer.alloc.initWithTarget(target, action: 'handle_gesture:')
       recognizer.direction = direction if direction
       recognizer.numberOfTouchesRequired = fingers if fingers
       return recognizer
@@ -103,7 +103,7 @@ module MotionWiretap
       min_fingers ||= fingers
       max_fingers ||= fingers
 
-      recognizer = UIPanGestureRecognizer.alloc.initWithTarget(target, action: :handle_gesture)
+      recognizer = UIPanGestureRecognizer.alloc.initWithTarget(target, action: 'handle_gesture:')
       recognizer.maximumNumberOfTouches = min_fingers if min_fingers
       recognizer.minimumNumberOfTouches = max_fingers if max_fingers
       return recognizer
@@ -131,7 +131,7 @@ module MotionWiretap
         end
       end
 
-      recognizer = UILongPressGestureRecognizer.alloc.initWithTarget(target, action: :handle_gesture)
+      recognizer = UILongPressGestureRecognizer.alloc.initWithTarget(target, action: 'handle_gesture:')
       recognizer.minimumPressDuration = duration if duration
       recognizer.numberOfTapsRequired = taps if taps
       recognizer.numberOfTouchesRequired = fingers if fingers

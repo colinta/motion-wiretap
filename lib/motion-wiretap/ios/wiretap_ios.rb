@@ -4,6 +4,11 @@ module MotionWiretap
 
   class WiretapView < WiretapTarget
 
+    def initialize(target, &block)
+      super
+      @gesture_recognizers = []
+    end
+
     def on(recognizer, options=nil, &block)
       if recognizer
         case recognizer
@@ -24,6 +29,7 @@ module MotionWiretap
         end
 
         self.target.addGestureRecognizer(recognizer)
+        @gesture_recognizers << recognizer
       end
 
       listen(&block)
@@ -31,8 +37,8 @@ module MotionWiretap
       return self
     end
 
-    def handle_gesture
-      trigger_changed
+    def handle_gesture(gesture)
+      trigger_changed(gesture)
     end
 
   end
@@ -46,7 +52,7 @@ module MotionWiretap
     def on(control_event, options={}, &block)
       begin
         control_event = ControlEvents.convert(control_event)
-        self.target.addTarget(self, action: :handle_event, forControlEvents: control_event)
+        self.target.addTarget(self, action: 'handle_event:', forControlEvents: control_event)
       rescue ControlEventNotFound
         super(control_event, options, &block)
       else
@@ -56,8 +62,8 @@ module MotionWiretap
       return self
     end
 
-    def handle_event
-      trigger_changed
+    def handle_event(event)
+      trigger_changed(event)
     end
 
   end
