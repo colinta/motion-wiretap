@@ -41,6 +41,14 @@ module MotionWiretap
       trigger_changed(gesture)
     end
 
+    def teardown
+      remove_gesture = (-> (recognizer) {
+        self.target.removeGestureRecognizer(recognizer)
+      }).weak!
+      @gesture_recognizers.each(&remove_gesture)
+      super
+    end
+
   end
 
   class WiretapControl < WiretapView
