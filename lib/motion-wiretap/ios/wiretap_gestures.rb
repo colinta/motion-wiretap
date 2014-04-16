@@ -33,32 +33,41 @@ module MotionWiretap
     end
 
     # @yield [recognizer] Handles the gesture event, and passes the recognizer instance to the block.
-    def pinch(target, options=nil)
+    def pinch(target, scale_or_options=nil)
+      scale = nil
       delegate = nil
 
-      if options
-        if options.is_a? Hash
-          delegate = options[:delegate]
+      if scale_or_options
+        if scale_or_options.is_a? Hash
+          scale = scale_or_options[:scale]
+          delegate = scale_or_options[:delegate]
+        else
+          scale = scale_or_options
         end
       end
 
       recognizer = UIPinchGestureRecognizer.alloc.initWithTarget(target, action: 'handle_gesture:')
+      recognizer.scale = scale if scale
       recognizer.delegate = delegate if delegate
       return recognizer
     end
 
     # @yield [recognizer] Handles the gesture event, and passes the recognizer instance to the block.
-    def rotate(target, options=nil)
+    def rotate(target, rotation_or_options=nil)
+      rotation = nil
       delegate = nil
 
-      if options
-        if options.is_a? Hash
-          delegate = options[:delegate]
+      if rotation_or_options
+        if rotation_or_options.is_a? Hash
+          rotation = rotation_or_options[:rotation]
+          delegate = rotation_or_options[:delegate]
         else
+          rotation = rotation_or_options
         end
       end
 
       recognizer = UIRotationGestureRecognizer.alloc.initWithTarget(target, action: 'handle_gesture:')
+      recognizer.rotation = rotation if rotation
       recognizer.delegate = delegate if delegate
       return recognizer
     end
