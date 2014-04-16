@@ -247,8 +247,8 @@ module MotionWiretap
 
     def bind_to(wiretap)
       @bound_to << wiretap
-      wiretap.listen do |value|
-        @target.send("#{@property}=".to_sym, value)
+      wiretap.listen do |*values|
+        @target.send("#{@property}=".to_sym, wiretap.value)
       end
       wiretap.trigger_changed(wiretap.value)
 
@@ -298,9 +298,9 @@ module MotionWiretap
 
           @values << wiretap.value
 
-          wiretap.listen do |value|
+          wiretap.listen do |*values|
             indx = @wiretaps[wiretap]
-            @values[index] = wiretap.value
+            @values[indx] = wiretap.value
             trigger_changed(*@values)
           end
 
