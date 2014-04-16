@@ -32,7 +32,7 @@ module MotionWiretap
         @gesture_recognizers << recognizer
       end
 
-      listen(&block)
+      listen(&block) if block
 
       return self
     end
