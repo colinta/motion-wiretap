@@ -13,11 +13,13 @@ module MotionWiretap
     def tap(target, taps_or_options=nil)
       taps = nil
       fingers = nil
+      delegate = nil
 
       if taps_or_options
         if taps_or_options.is_a? Hash
-          taps = taps_or_options[:taps] || taps
-          fingers = taps_or_options[:fingers] || fingers
+          taps = taps_or_options[:taps]
+          fingers = taps_or_options[:fingers]
+          delegate = taps_or_options[:delegate]
         else
           taps = taps_or_options
         end
@@ -26,18 +28,38 @@ module MotionWiretap
       recognizer = UITapGestureRecognizer.alloc.initWithTarget(target, action: 'handle_gesture:')
       recognizer.numberOfTapsRequired = taps if taps
       recognizer.numberOfTouchesRequired = fingers if fingers
+      recognizer.delegate = delegate if delegate
       return recognizer
     end
 
     # @yield [recognizer] Handles the gesture event, and passes the recognizer instance to the block.
-    def pinch(target)
+    def pinch(target, options=nil)
+      delegate = nil
+
+      if options
+        if options.is_a? Hash
+          delegate = options[:delegate]
+        end
+      end
+
       recognizer = UIPinchGestureRecognizer.alloc.initWithTarget(target, action: 'handle_gesture:')
+      recognizer.delegate = delegate if delegate
       return recognizer
     end
 
     # @yield [recognizer] Handles the gesture event, and passes the recognizer instance to the block.
-    def rotate(target)
+    def rotate(target, options=nil)
+      delegate = nil
+
+      if options
+        if options.is_a? Hash
+          delegate = options[:delegate]
+        else
+        end
+      end
+
       recognizer = UIRotationGestureRecognizer.alloc.initWithTarget(target, action: 'handle_gesture:')
+      recognizer.delegate = delegate if delegate
       return recognizer
     end
 
@@ -50,11 +72,13 @@ module MotionWiretap
     def swipe(target, direction_or_options)
       direction = nil
       fingers = nil
+      delegate = nil
 
       if direction_or_options
         if direction_or_options.is_a? Hash
-          direction = direction_or_options[:direction] || direction
-          fingers = direction_or_options[:fingers] || fingers
+          direction = direction_or_options[:direction]
+          fingers = direction_or_options[:fingers]
+          delegate = direction_or_options[:delegate]
         else
           direction = direction_or_options
         end
@@ -74,6 +98,7 @@ module MotionWiretap
       recognizer = UISwipeGestureRecognizer.alloc.initWithTarget(target, action: 'handle_gesture:')
       recognizer.direction = direction if direction
       recognizer.numberOfTouchesRequired = fingers if fingers
+      recognizer.delegate = delegate if delegate
       return recognizer
     end
 
@@ -88,12 +113,14 @@ module MotionWiretap
       fingers = nil
       min_fingers = nil
       max_fingers = nil
+      delegate = nil
 
       if fingers_or_options
         if fingers_or_options.is_a? Hash
-          fingers = fingers_or_options[:fingers] || fingers
-          min_fingers = fingers_or_options[:min_fingers] || min_fingers
-          max_fingers = fingers_or_options[:max_fingers] || max_fingers
+          fingers = fingers_or_options[:fingers]
+          min_fingers = fingers_or_options[:min_fingers]
+          max_fingers = fingers_or_options[:max_fingers]
+          delegate = fingers_or_options[:delegate]
         else
           fingers = fingers_or_options
         end
@@ -106,6 +133,7 @@ module MotionWiretap
       recognizer = UIPanGestureRecognizer.alloc.initWithTarget(target, action: 'handle_gesture:')
       recognizer.maximumNumberOfTouches = min_fingers if min_fingers
       recognizer.minimumNumberOfTouches = max_fingers if max_fingers
+      recognizer.delegate = delegate if delegate
       return recognizer
     end
 
@@ -120,12 +148,14 @@ module MotionWiretap
       duration = nil
       taps = nil
       fingers = nil
+      delegate = nil
 
       if duration_or_options
         if duration_or_options.is_a? Hash
-          duration = duration_or_options[:duration] || duration
-          taps = duration_or_options[:taps] || taps
-          fingers = duration_or_options[:fingers] || fingers
+          duration = duration_or_options[:duration]
+          taps = duration_or_options[:taps]
+          fingers = duration_or_options[:fingers]
+          delegate = duration_or_options[:delegate]
         else
           duration = duration_or_options
         end
@@ -135,6 +165,7 @@ module MotionWiretap
       recognizer.minimumPressDuration = duration if duration
       recognizer.numberOfTapsRequired = taps if taps
       recognizer.numberOfTouchesRequired = fingers if fingers
+      recognizer.delegate = delegate if delegate
       return recognizer
     end
 
