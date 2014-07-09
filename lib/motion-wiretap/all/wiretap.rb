@@ -358,7 +358,8 @@ module MotionWiretap
     # implementation
     def trigger_changed(*values)
       if @filter.call(*values)
-        super(*values)
+        Wiretap.instance_method(:trigger_changed).bind(self).call(*values)
+        # super
       end
     end
 
@@ -374,7 +375,7 @@ module MotionWiretap
     # passes the values through the combiner before passing up to the parent
     # implementation
     def trigger_changed(*values)
-      super(@combiner.call(*values))
+      Wiretap.instance_method(:trigger_changed).bind(self).call(@combiner.call(*values))
     end
 
   end
@@ -390,7 +391,7 @@ module MotionWiretap
     # passes each value through the @reducer, passing in the return value of the
     # previous call (starting with @memo)
     def trigger_changed(*values)
-      super(values.inject(@memo, &@reducer))
+      Wiretap.instance_method(:trigger_changed).bind(self).call(values.inject(@memo, &@reducer))
     end
 
   end
@@ -405,7 +406,7 @@ module MotionWiretap
     # passes the values through the mapper before passing up to the parent
     # implementation
     def trigger_changed(*values)
-      super(*values.map { |value| @mapper.call(value) })
+      Wiretap.instance_method(:trigger_changed).bind(self).call(*values.map { |value| @mapper.call(value) })
     end
 
   end
