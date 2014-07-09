@@ -47,7 +47,7 @@ describe "MotionWiretap with lots of chaining" do
     if @touched
       test.call
     else
-      print "\nyou have 5 seconds to tap 'control_event_button'"
+      print "\nyou have 5 seconds to tap 'login_button'"
       wait 5, &test
     end
   end
