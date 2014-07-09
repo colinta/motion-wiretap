@@ -1,36 +1,31 @@
 describe "MotionWiretap with lots of chaining" do
 
+  tests ChainingController
+
   before do
-    @login_button = UIButton.buttonWithType(UIButtonTypeRoundedRect)
-    @username_field = UITextField.new
-    @password_field = UITextField.new
-
-    # i don't want to set the value of @login_button.enabled, but we need to
-    # have the method compiled.
-    UIButton.new.enabled = true
-
     @done = false
-    @login_enabled_signal = 
+    @touched = false
+
+    @wiretap_1 = 
       MW([
-        MW(@username_field, :text),
-        MW(@password_field, :text)
+        MW(controller.username_field, :text),
+        MW(controller.password_field, :text)
       ])
       .combine do |username, password|
-        username && password && username.length > 0 && password.length > 0
+        !!(username && password && username.length > 0 && password.length > 0)
       end
 
-    @do_login_signal = 
-      MW([@login_enabled_signal, MW(@login_button).on(:touch)])
-      .combine { |enabled, touched| enabled && touched }
-      .filter { |doing| doing }
-      .listen do |doing|
+    @wiretap_2 = 
+      MW([@wiretap_1, MW(controller.login_button).on(:touch)])
+      .combine { |enabled, touched| !!(enabled && touched) }
+      .filter { |doing| !!doing }
+      .listen do |enabled, touched|
         @done = true
       end
-  end
 
-  after do
-    @login_enabled_signal.cancel!
-    @do_login_signal.cancel!
+    @wiretap_3 = MW(controller.login_button).on(:touch).listen do |e|
+      @touched = true
+    end
   end
 
   it "should start with undone" do
@@ -38,10 +33,23 @@ describe "MotionWiretap with lots of chaining" do
   end
 
   it "it should be done when all is ready" do
-    @username_field.text = 'username'
-    @password_field.text = 'password'
-    tap @login_button
-    @done.should == true
+    controller.username_field.text = 'username'
+    controller.password_field.text = 'password'
+
+    tap controller.login_button
+
+    test = -> do
+      @wiretap_1.cancel!
+      @wiretap_2.cancel!
+      @done.should == true
+    end
+
+    if @touched
+      test.call
+    else
+      print "\nyou have 5 seconds to tap 'control_event_button'"
+      wait 5, &test
+    end
   end
 
 end
