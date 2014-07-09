@@ -80,10 +80,6 @@ module MotionWiretap
       end
 
       @listener_handlers.each do |block_or_wiretap|
-        p 'triggering changed:'
-        p block_or_wiretap.class
-        p 'with values:'
-        p values
         trigger_changed_on(block_or_wiretap, values)
       end
 
@@ -92,10 +88,6 @@ module MotionWiretap
 
     # Sends the block or wiretap a changed signal
     def trigger_changed_on(block_or_wiretap, values)
-      p 'triggering changed on:'
-      p block_or_wiretap.class
-      p 'with values:'
-      p values
       if block_or_wiretap.is_a? Wiretap
         block_or_wiretap.trigger_changed(*values)
       else
@@ -348,11 +340,6 @@ module MotionWiretap
       super()
     end
 
-    def trigger_changed(*values)
-      p 'super called in child'
-      super
-    end
-
     def teardown
       @parent.cancel!
       super
@@ -370,19 +357,9 @@ module MotionWiretap
     # passes the values through the filter before passing up to the parent
     # implementation
     def trigger_changed(*values)
-      p 'calling trigger_changed on wiretap filter'
-      p 'with values:'
-      p values
-      p 'with block arity:'
-      p @filter.arity
       if @filter.call(*values)
-        p 'block returns true'
-        p 'calling super with arguments'
-        p values
         Wiretap.instance_method(:trigger_changed).bind(self).call(*values)
         # super
-      else
-        p 'block returns false'
       end
     end
 
