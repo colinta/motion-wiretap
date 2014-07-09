@@ -183,7 +183,7 @@ person_2.name = 'Mr. Blue'
 
 There is a "short form" and "long form" to these wiretaps.  The "short form" is
 something like `Motion.wiretap(proc) do (block) end`.  The `proc` will be
-executed, and when it's done, the `block` will execute.
+executed, and when it's done, the block will execute.
 
 The "long form" is different only in that the block is passed to the `and_then`
 method, not the initializer: `Motion.wiretap(proc).and_then do ... end`.  In
