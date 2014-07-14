@@ -193,6 +193,24 @@ describe MotionWiretap::WiretapArray do
         @reduced.should == 'name 1 name 2'
       end
 
+      it "should reduce with an initial value" do
+        p1 = Person.new
+
+        Motion.wiretap(p1, :name)
+        .reduce(3) do |memo, name|
+          memo + (name || 0)
+        end.listen do |reduced|
+          @reduced = reduced
+        end
+
+        p1.name = 1
+        @reduced.should == 4
+        p1.name = 2
+        @reduced.should == 6
+        p1.name = 3
+        @reduced.should == 9
+      end
+
       it "should reduce a mix of Wiretap and non-Wiretap objects" do
         p1 = Person.new
         Motion.wiretap([
