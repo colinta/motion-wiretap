@@ -119,9 +119,14 @@ describe MotionWiretap::WiretapArray do
     end
 
     describe "should reduce the values" do
+      before do
+        @reduced = nil
+      end
+
       it "should reduce Wiretap objects" do
         p1 = Person.new
         p2 = Person.new
+
         Motion.wiretap([
           Motion.wiretap(p1, :name),
           Motion.wiretap(p2, :name),
@@ -134,6 +139,7 @@ describe MotionWiretap::WiretapArray do
         end.listen do |reduced|
           @reduced = reduced
         end
+
         p1.name = 'name 1'
         @reduced.should == 'name 1'
         p2.name = 'name 2'
@@ -190,6 +196,7 @@ describe MotionWiretap::WiretapArray do
         end.listen do |reduced|
           @reduced = reduced
         end
+
         @reduced.should == 'name 1 name 2'
       end
 
@@ -231,6 +238,10 @@ describe MotionWiretap::WiretapArray do
     end
 
     describe "should map the values" do
+      before do
+        @mapped = nil
+      end
+
       it "should map Wiretap objects" do
         p1 = Person.new
         p2 = Person.new
