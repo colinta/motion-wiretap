@@ -8,6 +8,18 @@ module MotionWiretap
   # including nil.
   SINGLETON = Class.new.new
 
+  class Index
+    attr_accessor :value
+
+    def initialize(value)
+      self.value = value
+    end
+
+    def to_i
+      value
+    end
+  end
+
   class Wiretap
     # wiretaps have an intrinsic "current value"
     attr :value
@@ -73,6 +85,9 @@ module MotionWiretap
 
     def trigger_changed(*values)
       return if @is_torn_down || @is_completed || @is_error
+
+      index = values.pop if values.last.is_a? Index
+
       if values.length == 1
         @value = values.first
       else
@@ -80,16 +95,18 @@ module MotionWiretap
       end
 
       @listener_handlers.each do |block_or_wiretap|
-        trigger_changed_on(block_or_wiretap, values)
+        trigger_changed_on(block_or_wiretap, values, index)
       end
 
       return self
     end
 
     # Sends the block or wiretap a changed signal
-    def trigger_changed_on(block_or_wiretap, values)
+    def trigger_changed_on(block_or_wiretap, values, index = nil)
       if block_or_wiretap.is_a? Wiretap
-        block_or_wiretap.trigger_changed(*values)
+        if index.is_a? Index then block_or_wiretap.trigger_changed(*values, index)
+        else block_or_wiretap.trigger_changed(*values)
+        end
       else
         enqueue do
           block_or_wiretap.call(*values)
@@ -301,7 +318,7 @@ module MotionWiretap
           wiretap.listen do |*values|
             indx = @wiretaps[wiretap]
             @values[indx] = wiretap.value
-            trigger_changed(*@values)
+            trigger_changed(*@values, Index.new(indx))
           end
 
           wiretap.on_error do |error|
@@ -357,6 +374,7 @@ module MotionWiretap
     # passes the values through the filter before passing up to the parent
     # implementation
     def trigger_changed(*values)
+      values.pop if values.last.is_a? Index
       if @filter.call(*values)
         Wiretap.instance_method(:trigger_changed).bind(self).call(*values)
         # super
@@ -375,6 +393,7 @@ module MotionWiretap
     # passes the values through the combiner before passing up to the parent
     # implementation
     def trigger_changed(*values)
+      values.pop if values.last.is_a? Index
       Wiretap.instance_method(:trigger_changed).bind(self).call(@combiner.call(*values))
     end
 
@@ -391,7 +410,10 @@ module MotionWiretap
     # passes each value through the @reducer, passing in the return value of the
     # previous call (starting with @memo)
     def trigger_changed(*values)
-      Wiretap.instance_method(:trigger_changed).bind(self).call(values.inject(@memo, &@reducer))
+      index = values.pop if values.last.is_a? Index
+      Wiretap.instance_method(:trigger_changed).bind(self).call(
+        @memo = @reducer.call(@memo, values[index.to_i])
+      )
     end
 
   end
@@ -406,6 +428,7 @@ module MotionWiretap
     # passes the values through the mapper before passing up to the parent
     # implementation
     def trigger_changed(*values)
+      values.pop if values.last.is_a? Index
       Wiretap.instance_method(:trigger_changed).bind(self).call(*values.map { |value| @mapper.call(value) })
     end
 
